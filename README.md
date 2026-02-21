@@ -1,98 +1,43 @@
-# 🏙️ CiviSync - Smart City Management System
+# 🏙️ CiviSync - Smart City Management Platform
 
-![Vanilla JS](https://img.shields.io/badge/Vanilla_JS-ES6+-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
-![HTML5](https://img.shields.io/badge/HTML5-Semantic-E34F26?style=for-the-badge&logo=html5&logoColor=white)
-![CSS3](https://img.shields.io/badge/CSS3-Custom_Properties-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+![HTML5](https://img.shields.io/badge/html5-%23E34F26.svg?style=for-the-badge&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/css3-%231572B6.svg?style=for-the-badge&logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
 
-CiviSync is an offline-capable, Single-Page Application (SPA) built with vanilla web technologies. It serves as a municipal issue tracking and management dashboard, featuring role-based access control (RBAC), GIS mapping, and dynamic state management without the need for a traditional backend infrastructure.
+**CiviSync** is a next-generation civic technology platform designed to bridge the gap between citizens, NGOs, and municipal authorities. It goes beyond simple issue reporting by introducing AI-driven routing, transparent budget tracking, and community volunteering to build smarter, safer cities together.
 
-## 🏗️ System Architecture
+## ✨ Key Features
 
-CiviSync utilizes a lightweight, custom-built DOM-manipulation engine to simulate SPA routing. 
+### For Citizens 🧑‍🤝‍🧑
+* **Smart Issue Reporting:** Report issues (potholes, leaks, electrical) using text, image uploads, or **voice dictation**.
+* **AI-Assisted Routing:** Automatically categorizes reports and routes them to the correct municipal department.
+* **Interactive City Map:** Visualize all active city issues and digital safety advisories in real-time using Leaflet.js.
+* **Civic Gamification:** Earn points for reporting issues and climb the community leaderboard. Redeem points for civic rewards (e.g., Metro Passes).
+* **Offline Mode:** Report issues even without an internet connection. The app automatically syncs your reports once you are back online.
 
-* **View Management:** The application holds all views in the DOM and toggles `.active` and `.hidden` CSS classes to navigate between states (e.g., `view-landing`, `view-track`, `view-admin`) to ensure zero-latency transitions.
-* **State Persistence:** Employs the browser's `localStorage` API (`civisync_db_v8`) as a pseudo-database to store user sessions, issue tickets, and audit trails.
-* **Offline-First Strategy:** Implements a queuing system (`civisync_offline_v8`). Network status is monitored via `navigator.onLine` and `window.addEventListener('online')` to cache POST requests locally and sync them upon network restoration.
+### For Authorities 🛡️
+* **Admin Dashboard:** Track department performance, manage high-priority hazards, and update issue statuses.
+* **Budget Transparency:** Clearly mark issues that are delayed due to funding constraints so citizens understand *why* a fix is pending.
+* **Analytics & Escalation:** View data visualizations (Chart.js) and generate automated, data-driven PDF reports (html2pdf.js) to justify future funding requirements at city planning meetings.
 
-## ⚙️ Core Technical Components
+### For NGOs & Community Partners 🤝
+* **NGO Hub:** Browse municipal issues that are currently delayed due to budget constraints.
+* **Adopt an Issue:** Pledge volunteer hours, funds, or resources to fix community problems when government budgets fall short.
 
-### 1. Web APIs Integrated
-* **Geolocation API:** Fetches high-accuracy lat/long coordinates for precise issue mapping.
-* **Web Speech API (`webkitSpeechRecognition`):** Enables native voice-to-text dictation for issue descriptions, bypassing the need for external transcription microservices.
-* **FileReader API:** Handles client-side image processing, converting uploaded images into Base64 strings for local storage persistence.
+## 🛠️ Tech Stack
 
-### 2. Third-Party Libraries
-* **Leaflet.js:** Renders interactive map layers. Issue coordinates are dynamically mapped to `L.marker` instances with custom DOM-node icons based on hazard priority.
-* **Chart.js:** Processes local state arrays to generate real-time `<canvas>` visualizations (Doughnut, Pie, and Bar charts) for the analytics dashboard.
-* **html2pdf.js:** Manipulates the DOM to generate hidden printable views, converting HTML nodes and CSS styles into downloadable Blob/PDF instances for administrative escalation reports.
+This project is built using a modern, lightweight, vanilla front-end stack to ensure speed and simplicity:
 
-### 3. Data Schema (Simulated Payload)
-The application handles issue objects utilizing the following JSON structure:
-```json
-{
-  "id": "ISS001",
-  "title": "Large pothole on MG Road",
-  "category": "Pothole",
-  "desc": "Major accident risk. Requires immediate asphalt filling.",
-  "location": "MG Road",
-  "priority": "high",
-  "status": "pending",
-  "upvotes": 47,
-  "dept": "Public Works",
-  "img": "data:image/jpeg;base64,...",
-  "lat": 31.6340,
-  "lng": 74.8723,
-  "budget": "Pending Budget Constraint",
-  "volunteers": 2,
-  "history": [
-    {
-      "stat": "pending | Pending Budget Constraint",
-      "date": "2026-02-21T10:00:00.000Z",
-      "hash": "0x5a2b...f1c"
-    }
-  ]
-}
-🚀 Local Development Setup
-Because the application relies on fetching external map tiles and parsing Base64 files, serving it over the file:// protocol may trigger Cross-Origin Resource Sharing (CORS) or strict MIME-type security errors in modern browsers.
+* **Frontend:** HTML5, CSS3 (Custom properties, CSS Grid/Flexbox), JavaScript (ES6+)
+* **Mapping:** [Leaflet.js](https://leafletjs.com/) (Interactive maps)
+* **Analytics:** [Chart.js](https://www.chartjs.org/) (Data visualization)
+* **PDF Generation:** [html2pdf.js](https://ekoopmans.github.io/html2pdf.js/)
+* **Database:** Simulated via `localStorage` (No backend setup required to test the UI!)
 
-Prerequisites: Node.js, Python, or the VS Code Live Server extension.
+## 🚀 Getting Started
 
-1. Clone the repository
+Since CiviSync is a front-end application utilizing `localStorage`, running it locally is incredibly easy.
 
-Bash
-git clone [https://github.com/YOUR-USERNAME/CiviSync.git](https://github.com/YOUR-USERNAME/CiviSync.git)
-cd CiviSync
-2. Serve locally
-Using Python 3:
-
-Bash
-python -m http.server 8000
-Using Node.js (http-server):
-
-Bash
-npx http-server -p 8000
-3. Access the application
-Navigate to http://localhost:8000 in your browser.
-
-🔐 Authentication Protocol (Mock)
-The handleAuth() function dynamically injects user session data into the global currentUser object.
-
-Citizen Role: Unlocks DOM elements with the .auth-req class, initializes the gamification points state, and routes to Maps('track').
-
-Admin Role: Bypasses gamification UI, unlocks budget/analytics parameters, and routes to Maps('admin'). Admin login: ID: City Admin, Pass: admin123.
-
-🛣️ Roadmap: Backend Migration Path
-To transition this prototype into a production-ready full-stack application, the following refactoring roadmap is proposed:
-
-API Layer: Replace getDB() and setDB() local storage handlers with fetch() or Axios calls to a RESTful API (e.g., Express.js or FastAPI).
-
-Database: Migrate the JSON array to a NoSQL (MongoDB) or Relational (PostgreSQL with PostGIS for spatial queries) database.
-
-Authentication: Implement JWT (JSON Web Tokens) or OAuth2.0 to replace the client-side pseudo-auth logic.
-
-Cloud Storage: Migrate Base64 image strings to an S3 bucket (AWS/GCP) and store image URIs in the database to reduce payload overhead.
-
-👨‍💻 Author
-Prakhar
-
-GitHub: https://github.com/prakhar9044-code
+1. **Clone the repository:**
+   ```bash
+   git clone [https://github.com/YOUR-USERNAME/CiviSync.git](https://github.com/YOUR-USERNAME/CiviSync.git)
