@@ -1,0 +1,8 @@
+num=int(input("ENTER A NUMBER:"))
+print(float(num))
+print(int(20.0))
+print(str(num))
+print(ord('A'))
+print(ord('z'))
+print(complex(2,3))
+print(complex())

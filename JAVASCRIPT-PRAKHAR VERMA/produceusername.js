@@ -1,0 +1,6 @@
+let fullName=prompt("ENTER YOUR FULLNAME:");
+nameLength=fullName.length;
+userName=`@${fullName}${nameLength}`;
+// HERE  IN THE ABOVE LINE TEMPLATE LITERAL HAS BEEN USED TO CREATE A USERNAME BY COMBINING THE FULLNAME AND THE LENGTH OF THE NAME.
+console.log("YOUR USERNAME:", userName);
+alert("USERNAME GENERATED SUCCESSFULLY!");

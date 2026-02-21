@@ -1,0 +1,71 @@
+BODY {
+    background-color:black;
+    color:white;
+}
+H1 {
+    text-align:center;
+    color:red;
+    text-decoration:underline;
+    word-spacing:5px;
+    font-weight:bold;
+}
+P {
+    color:blue;
+    text-align:center;
+    text-transform:uppercase;
+    font-family:'Courier New', Courier, monospace;
+    line-height:5;
+    /* it increases the space between the lines  */
+    letter-spacing:8px; 
+    /* it helps in increasing space between corresponding letters  */
+}
+.one {
+    display:flex;
+    gap:20px;
+    margin-top:50px;
+    border:2px solid white;
+}
+#inner1 {
+    border:2px solid white;
+    background-color:green;
+    height:10%;
+    width:100%;
+    margin-top:3%;
+    margin-bottom:3%;
+    margin-left:20%;
+    border-radius:10px;
+
+}
+#inner2 {
+    border:2px solid white;
+    background-color:yellow;
+    height:10%;
+    margin-left:180px;
+    width:100%;
+    color:black;
+    margin-right:10%;
+     margin-top:3%;
+    margin-bottom:3%;
+    margin-left:20%;
+    border-radius:10px;
+}
+.pone {
+    align-items: center;
+    border:2px solid white;
+    background-color:orange;
+    height:100%;
+    width:100%;
+}
+HEADER {
+    display:flex;
+    gap:20px;
+    margin-left:80%;
+}
+a {
+    color:white;
+    text-decoration:none;
+    justify-content:center;
+    align-items:center;
+    
+    display:flex;
+}

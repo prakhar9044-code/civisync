@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GovTech | Smart Civic Platform</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-light">
+    <nav class="glass-nav">
+        <div class="logo">🏛️ SmartCity Gov</div>
+        <div class="controls">
+            <button id="langToggle">A/अ</button>
+            <button id="themeToggle">🌓</button>
+            <button id="bandwidthToggle">⚡ Low BW</button>
+        </div>
+    </nav>
+
+    <main class="hero">
+        <div class="glass-card auth-container">
+            <h2>Civic Portal Access</h2>
+            <form id="authForm">
+                <input type="text" id="username" placeholder="Username (e.g., citizen1 or admin)" required>
+                <select id="roleSelect">
+                    <option value="citizen">Citizen</option>
+                    <option value="admin">Authority / Admin</option>
+                </select>
+                <button type="submit" class="btn-primary">Secure Login</button>
+            </form>
+            <div class="impact-counter">Issues Resolved: <span id="counter">1,402</span></div>
+        </div>
+    </main>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

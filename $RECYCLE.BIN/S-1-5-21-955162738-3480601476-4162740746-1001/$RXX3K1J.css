@@ -1,0 +1,100 @@
+:root {
+    --bg-color: #f4f7f6;
+    --text-color: #333;
+    --primary: #0056b3;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.3);
+}
+
+body.theme-dark {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --primary: #4da3ff;
+    --glass-bg: rgba(30, 30, 30, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+body.low-bandwidth {
+    /* Disables all animations and complex backgrounds */
+    --glass-bg: var(--bg-color);
+    background-image: none !important;
+}
+body.low-bandwidth * {
+    animation: none !important;
+    transition: none !important;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    transition: background 0.3s, color 0.3s;
+}
+
+.glass-nav, .glass-panel, .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.glass-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 0 0 12px 12px;
+    margin-bottom: 20px;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    padding: 0 20px;
+}
+
+form { display: flex; flex-direction: column; gap: 15px; }
+input, textarea, select {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    background: transparent;
+    color: var(--text-color);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.2s;
+}
+.btn-primary:hover { transform: translateY(-2px); }
+
+.issue-list li {
+    padding: 15px;
+    border-bottom: 1px solid var(--glass-border);
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+.badge.critical { background: #ff4d4d; color: white; }
+.badge.high { background: #ffa64d; color: white; }
+
+@media (max-width: 768px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+}

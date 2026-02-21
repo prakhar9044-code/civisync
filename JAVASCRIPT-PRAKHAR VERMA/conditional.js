@@ -1,0 +1,9 @@
+// GET USER TO INPUT A NUMBER USING A PROMPT LABELED AS ENTER A NUMBER CHECK THEN IF  NUMBER IS A MULTIPLE OF 5 OR Notification.  
+let num=prompt("ENTER A NUMBER");
+if (num%5==0) {
+    console.log("NUMBER IS A MULTIPLE OF 5");
+} else{
+    console.log("NUMBER IS NOT A MULTIPLE OF 5");
+}
+alert ("NUMBER CHECKED");
+

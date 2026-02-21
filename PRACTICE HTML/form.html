@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- not compulsory to write the meta tag lines in the boiler plate code while writing programs. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FORM</title>
+    <STYLE>
+        #form1 {
+            margin-left:50px;
+            margin-right:50px;
+        }
+        body {
+            background-image:url(jee-logo.PNG);
+            background-repeat:no repeat;
+            background-size:cover;
+        }
+        MARQUEE {
+            color:black;
+        }
+        h2 {
+            color:#6F2DBD;
+        }
+        p {
+            color:blue;
+        }
+        button {
+            background-color:black;
+            color:white;
+        }
+        /* [input type="reset"]:hover {
+            background-color:navy;
+        } */
+
+        /* button:hover {
+            background-color:blueviolet;
+        } */
+        input:focus {
+            /* in this we are calling all the elements of the form at once and when we click on the particular field then we get the same color as enetered. */
+            background-color:#A663CC;
+        }
+        fieldset {
+            background-color:#B8D0EB;
+        }
+        form {
+            background-color:#A663CC;
+            position:center;
+        }
+        H1{
+            color:BLACK;;
+        }
+    </STYLE>
+</head>
+<body>
+    <H1><MARQUEE behavior="alternate"><img src="jee-logo.png"  HEIGHT="25">JOINT ENTRANCE EXAMINATION<img src="jee-logo.png"  HEIGHT="30"></MARQUEE></H1>
+    <P><MARQUEE>Application window closing soon.</MARQUEE></P>
+    <div id="form1">  
+        <!-- we have created div here in order to customize the whole form at once -->
+    <form id="f1" action="activity1.html" method="get">
+        <!-- when we use get in method then it reveals all the data in the url of the external website inckuding the password as well whereas post does the opposite. -->
+        <!-- action redirects to an external website or link file added when you click on the submit button. -->
+        <fieldset>
+            <legend><B><H2>FORM</H2> </B></legend>
+            <LABEL FOR="text1"> USERNAME: 
+            <input type="text" id="text1" placeholder="UserName" required>
+            </LABEL>
+            <br> <br>
+            <LABEL FOR="text2"> PASSWORD: </LABEL>
+            <input type="password" id="text2" placeholder="Enter your password......" required>
+            </LABEL>
+            <BR><BR>
+
+            <LABEL FOR="text3">EMAIL ID:</LABEL>
+            <INPUT TYPE="text" id="text3" placeholder="Enter your Email ID...." required>
+            <BR><br>
+
+            <LABEL FOR="text4">AGE:&nbsp;&nbsp;</LABEL>
+            <INPUT TYPE="number" min="18" max="60">
+            <br><br>
+
+            GENDER: <INPUT TYPE="radio" name="mygender">Male <INPUT TYPE="radio" name="mygender">Female
+                <br><br>
+            
+            <label for="country">COUNTRY:</label>
+            <select id="country">
+            <option>India</option>
+            <option>United Kingdom</option>
+            <option>Thailand</option>
+            </select>
+            <br><br>
+
+            HOBBIES: <INPUT TYPE="checkbox">Coding
+            <INPUT TYPE="checkbox">Reading
+            <INPUT TYPE="checkbox">Trekking
+            <br><br>
+
+            <LABEL FOR="file1">IDENTITY:</LABEL>
+            <INPUT TYPE="file" id="file1"><br><br>
+
+            DATE:&nbsp;&nbsp;<INPUT TYPE="date">
+                <!-- &nbsp is used to get spaces between a particular label and its input. -->
+            <br><br>
+            <LABEL FOR="feedback">FEEDBACK:</LABEL>
+            <textarea id="feedback" rows="2" cols="20"> </textarea>
+            <br><br>
+
+            <!-- <button onclick="alert{SUCCESSFULLY LOGGED IN !}">SUBMIT</button>
+            <br><br> -->
+
+            <INPUT TYPE="submit" name="SUBMIT">
+            <input type="reset" value="RESET">
+       </fieldset>
+       <br>
+    </form>
+    </div>
+</body>
+</html>

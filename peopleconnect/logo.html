@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MindBridge Logo</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    background: radial-gradient(circle at top, #10162a, #0b0f1a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .logo-container {
+    text-align: center;
+  }
+
+  svg {
+    width: 160px;
+    height: 160px;
+    filter: drop-shadow(0 0 18px rgba(124,92,255,0.5));
+  }
+
+  .pulse {
+    animation: pulse 3s infinite ease-in-out;
+    transform-origin: center;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.85; }
+    50% { transform: scale(1.06); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.85; }
+  }
+
+  .brand {
+    margin-top: 14px;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #e6e9ff;
+    letter-spacing: 1px;
+  }
+
+  .tagline {
+    font-size: 0.85rem;
+    color: #9aa4ff;
+    opacity: 0.8;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="logo-container">
+  <svg viewBox="0 0 200 200">
+    <!-- Outer Glow Ring -->
+    <circle cx="100" cy="100" r="70" 
+      stroke="url(#grad)" stroke-width="3" fill="none"/>
+
+    <!-- Bridge Arc -->
+    <path d="M50 115 Q100 70 150 115" 
+      stroke="url(#grad)" stroke-width="4" fill="none"/>
+
+    <!-- Central Node -->
+    <circle cx="100" cy="100" r="10" fill="#7c5cff" class="pulse"/>
+
+    <!-- Side Nodes -->
+    <circle cx="65" cy="115" r="6" fill="#00d4ff"/>
+    <circle cx="135" cy="115" r="6" fill="#00d4ff"/>
+
+    <defs>
+      <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#7c5cff"/>
+        <stop offset="100%" stop-color="#00d4ff"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <div class="brand">MindBridge</div>
+  <div class="tagline">You are not alone</div>
+</div>
+
+</body>
+</html>

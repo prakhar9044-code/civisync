@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Webpage</title>
+    <link rel="icon" href="wallpaper.jpg" type="img/jpg">
+    <STYLE>
+        body {
+            background-color:black;
+            color:white;
+            background-image:url(wallpaper.jpg);
+            background-repeat: no-repeat;
+            background-size:cover;
+        }
+        H1 {
+            color:red;
+        }
+        H2 {
+            color:blue;
+            text-align:center;
+        }
+        H3 {
+            color:pink;
+            text-align:center;
+        }
+        #two {
+            background-color:pink;
+            color:black;
+            height:100%;
+            width:70%;
+        }
+        #three {
+            background-color:blue;
+            height:100%;
+            width:70%;
+        }
+        TABLE {
+            border-collapse:separate;
+        }
+        #six {
+            background-color:grey;
+            border-radius:10px;
+        }
+        TD {
+            border:3px solid white;
+            border-collapse:separate;
+            padding:10px;
+            border-radius:10px;
+            background-color:blue;
+        }
+        th {
+            border:3px solid white;
+            border-collapse:separate;
+            padding:10px;
+            border-radius:10px;
+            background-color:red;
+        }
+        /* #one {
+            background-color:blue;
+        } */
+        #five {
+            background-color:slateblue;
+            border-radius:30px;
+        }
+        TH:hover {
+            background-color:pink;
+            color:black;
+        }
+        TD:hover {
+            background-color:red;
+            color:white;
+        }
+        input:focus {
+            background-color:violet;
+        }
+        fieldset {
+            background-color:slateblue;
+        }
+        form {
+            background-color:grey;
+            height:100%;
+            width:90%;
+        }
+        blockquote {
+            text-align:center;
+            background-color:pink;
+            color:black;
+        }
+    </STYLE>
+</head>
+<body>
+    <MARQUEE><H1><CENTER><B>DEMO WEBPAGE</B></CENTER></H1></MARQUEE>
+    <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Fugiat ex iure eligendi dolores nobis, numquam odio assumenda culpa sunt quasi accusantium animi explicabo provident illo nesciunt at in reprehenderit quidem, eum dolorem, repellat recusandae. Tempora officiis, non quidem iure, assumenda eum culpa eligendi obcaecati et natus veniam sed, nemo sit est aliquid? Totam exercitationem debitis et soluta sunt maiores consequuntur dignissimos repellendus suscipit necessitatibus. Error sapiente illo odio culpa? Aliquid tempora tenetur consequuntur cupiditate, libero qui quam ducimus quos, reprehenderit veritatis cum nemo soluta sequi. Nemo iure, eligendi aliquam rem voluptatibus dolor assumenda a sit, corrupti doloremque laborum, laboriosam architecto!</p>
+    <HR>
+    <DIV id="two">
+    <H2>TYPES OF LISTS</H2>
+    <OL TYPE="1">
+        <LI>SWEDEN</LI>
+        <LI>AUSTRALIA</LI>
+        <LI>AUSTRIA</LI>
+    </OL>
+    <OL TYPE="I">
+        <LI>SWEDEN</LI>
+        <LI>AUSTRALIA</LI>
+        <LI>AUSTRIA</LI>
+    </OL>
+    <OL TYPE="A">
+        <LI>SWEDEN</LI>
+        <LI>AUSTRALIA</LI>
+        <LI>AUSTRIA</LI>
+    </OL>
+    <OL TYPE="a">
+        <LI>SWEDEN</LI>
+        <LI>AUSTRALIA</LI>
+        <LI>AUSTRIA</LI>
+    </OL>
+    <OL TYPE="i">
+        <LI>SWEDEN</LI>
+        <LI>AUSTRALIA</LI>
+        <LI>AUSTRIA</LI>
+    </OL>
+    <UL TYPE="CIRCLE">
+        <LI>SWEDEN</LI>
+        <LI>AUSTRALIA</LI>
+        <LI>AUSTRIA</LI>
+    </UL>
+    <!-- <UL TYPE="SPHERE">
+        <LI>SWEDEN</LI>
+        <LI>AUSTRALIA</LI>
+        <LI>AUSTRIA</LI>
+    </UL> -->
+    <!-- DISC OR SPHERE BOTH WORK THE SAME WHEN USED AS A TYPE IN AN UNORDERED LIST -->
+    <UL TYPE="DISC">
+        <LI>SWEDEN</LI>
+        <LI>AUSTRALIA</LI>
+        <LI>AUSTRIA</LI>
+    </UL>
+    </DIV>
+    <DIV id="three">
+    <H3>NESTED LISTS</H3>
+    <OL TYPE="1"> 
+        <LI>COUNTRY NAMES:</LI>
+        <UL TYPE="DISC">
+        <LI>SWEDEN</LI>
+        <LI>AUSTRALIA</LI>
+        <LI>AUSTRIA</LI>
+        </UL>
+        <BR>
+    
+        <LI>STATE NAMES:</LI>
+        <OL TYPE="i">
+            <LI>UTTAR PRADESH</LI>
+            <LI>PUNJAB</LI>
+            <LI>DELHI</LI>
+            <LI>ASSAM</LI>
+        </OL>
+    </OL>
+    </DIV>
+    <HR>
+    <A HREF="vscode_shortcuts.pdf" target="_blank">VS CODE SHORTCUTS</A>
+    <!-- HERE EMBED TAG COULD HAVE ALSO BEEN USED INSTEAD OF ANCHOR TAG AS EMBED TAG IS USED TO SHOW OR LINK SOME INTERACTIVE MEDIA TO A WEBPAGE  -->
+    <IMG SRC="wallpaper.jpg" type="image/jpg" HEIGHT="100%" WIDTH="100%" alt="NO IMAGE FOUND" site="LENOVO LOQ"> 
+        <HR>
+    <H2 STYLE="color:white;">AMAZON RAINFOREST</H2>
+    <VIDEO CONTROLS HEIGHT="100%" WIDTH="100%">
+        <SOURCE SRC="nature.mp4" type="video/mp4">
+    </VIDEO>
+    <HR>
+    <DIV id="five">
+    <AUDIO CONTROLS MUTE HEIGHTS="100%" WIDTH="100%">
+        <SOURCE SRC="naturesounds.mp3" type="audio/mp3">
+    </AUDIO>
+    </DIV>
+    <HR>
+        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/es4x5R-rV9s?si=GcABmlcHsf_NCBt6" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        <!-- IFRAME MEANS INLINE FRAME WHICH IS USED TO ADD ANOTHER HTML WEBPAGE INTO ANOTHER  -->
+    <HR>
+    <BR>
+    <BR>
+    <CENTER><H2 STYLE="color:pink;">TABLE INSERTION</H2></CENTER>
+    <DIV id="six">
+        <TABLE>
+            <TR>
+                <TH id="one" colspan="2">NAME</TH>
+                <TH>CLASS</TH>
+                <TH>ROLL NUMBER</TH>
+            </TR>
+            <TR>
+                <TD>PRAKHAR VERMA</TD>
+                <TD>K25TW</TD>
+                <TD>2459</TD>
+            </TR>
+        <TR>
+            <TD>SWET RAJPUT</TD>
+            <TD>K25RW</TD>
+            <TD>2460</TD>
+        </TR>
+        <TR>
+            <TD>AKSH TUTEJA</TD>
+            <TD>K25TW</TD>
+            <TD colspan="2">2461</TD>
+        </TR>
+    </TABLE>
+</DIV>
+    <HR>
+        <BR>
+    <H2 STYLE="color:violet;">FORM INSERTION</H2>
+    <FORM action="post">
+        <!-- get is used in the action tab when we want to show the form details in the url of the webpage to which you have redirected whereas the post method is used to encrypt the same on the otherhand -->
+        <FIELDSET>
+            <LEGEND><H3 STYLE="color:black;">REGISTRATION FORM</H3></LEGEND>
+            <LABEL FOR="name">NAME:</LABEL>
+            <INPUT TYPE="text" id="name" placeholder="Enter your name......">
+                <BR>
+                <BR>
+
+            <LABEL FOR="class">CLASS:</LABEL>
+            <INPUT TYPE="text" id="class" placeholder="Enter your class......">
+                <BR>
+                <BR>
+
+            <LABEL FOR="roll number">ROLL NUMBER:</LABEL>
+            <INPUT TYPE="text" id="roll number" placeholder="Enter your Roll Number.....">
+                <BR>
+                <BR>
+
+            <LABEL FOR="age">AGE:</LABEL>
+            <INPUT TYPE="number" max="18" min="5">
+                <BR>
+                <BR>
+
+            <LABEL FOR="date1">DATE:</LABEL>
+            <INPUT TYPE="date" id="date1">
+                <BR>
+                <BR>
+
+            <LABEL FOR="subjects">SUBJECTS:</LABEL>
+            <INPUT TYPE="checkbox">Computer
+            <INPUT TYPE="checkbox">Arts
+            <INPUT TYPE="checkbox">Commerce
+                <BR>
+                <BR>
+
+            <LABEL FOR="stream">STREAM:</LABEL>
+            <SELECT id="stream">
+                <OPTION>PCM</OPTION>
+                <OPTION>PCB</OPTION>
+                <OPTION>ARTS</OPTION>
+                <OPTION>COMMERCE</OPTION>
+            </SELECT>
+            <BR>
+            <BR>
+
+            <LABEL FOR="password">PASSWORD:</LABEL>
+            <INPUT TYPE="password" id="password" placeholder="Enter your password....."">
+                <BR>
+                <BR>
+
+            <LABEL FOR="ops">OPTIONAL SUBJECT:&nbsp;</LABEL>
+            <!-- &nbsp; is used to give spaces between a particular field and its corresponding value -->
+            <INPUT TYPE="radio" id="ops">Mathematics
+            <INPUT TYPE="radio" id="ops">Biology
+            <INPUT TYPE="radio" id="ops">Commerce
+            <BR>
+            <BR>
+
+            <LABEL FOR="file1">MARKSHEET</LABEL>
+            <INPUT TYPE="file" id="file1">
+                <BR>
+                <BR>
+
+            <LABEL FOR="feedback">FEEDBACK:</LABEL>
+            <TEXTAREA id="feedback" rows="2" cols="20"></TEXTAREA>
+            <BR>
+            <BR>
+
+            <INPUT TYPE="reset" name="RESET">
+            <BUTTON>Submit</BUTTON>
+        </FIELDSET>
+    </FORM>
+    <HR>
+    <H1><U><MARK>THIS IS BLOCKQUOTE</MARK></U></H1>
+    <!-- MARK TAG IS ALSO A PAIRED TAG AND IS USED TO HIGHLIGHT A WORD OR STATEMENT -->
+    <SPAN STYLE="color:yellow;">USING BLOCKQUOTE</SPAN>
+    <BLOCKQUOTE>
+        <P><EM><STRONG>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Laboriosam impedit repellat cupiditate architecto eveniet minus quia, ducimus beatae aspernatur illum eaque maiores explicabo eos sequi officiis non autem delectus! Iusto adipisci earum, hic sequi, nesciunt nisi magnam amet neque tempore, quidem esse quos cumque! Neque earum laboriosam </STRONG>quia quo veniam, accusamus, culpa odit officiis nihil fugit repellat vero sequi ullam, placeat alias quaerat harum illo magnam tempora perferendis nisi vitae rem dolor qui. Iste expedita minus, nobis minima et totam modi aspernatur. Ab sint velit dolor optio, nisi molestiae a aspernatur iure fugiat, magni architecto quia qui vel incidunt unde aliquid maxime ex blanditiis officia dolorem. Asperiores libero a perspiciatis quis ipsa nobis architecto earum nemo. Numquam reiciendis culpa, magnam perspiciatis temporibus pariatur unde quas optio inventore animi aspernatur in. Amet qui quam aperiam neque quae corporis magni accusantium veritatis! Accusamus necessitatibus veniam exercitationem repudiandae quibusdam atque, eos voluptatum quis, debitis optio tempora aliquid expedita voluptates. Possimus laudantium iusto et temporibus tempora hic. Sit quam, ex animi libero rerum doloremque odio unde laboriosam error at incidunt ut soluta iusto natus reprehenderit non a esse id assumenda molestiae obcaecati. Voluptatem eaque debitis explicabo quidem ea, doloremque assumenda incidunt enim cupiditate quam.</EM></P>
+    </BLOCKQUOTE>
+    <CITE>~PRAKHAR VERMA</CITE>
+    <!-- CITE TAG IS ALSO A PAIRED TAG AND IT CONSISTS OF THE AUTHOR'S NAME -->
+    <BR>
+    <BR>
+    <Q>NEVER UNDERESTIMATE THE POWER OF A COMMON MAN !</Q>
+    <!-- Q TAG IS A PAIRED TAG AND IS USED TO WRITE A QUOTE -->
+    <BR>
+    <BR>
+    <DFN>DANGER NEVER ENDS</DFN>
+    <H1 STYLE="color:pink;">NH<SUB>3</SUB>=N<SUB>2</SUB>+3H<SUB>2</SUB></H1>
+    <H1 STYLE="color:pink;">H<SUB>2</SUB>O</H1>
+    <BR>
+    <BR>
+    <div class="four">
+        <DL>DESCRIPTION LIST
+        <DT>DESCRIPTION TERM</DT>
+        <DD>DESCRIPTION DATA</DD>
+        </DL>
+    </div>
+    <BR>
+    <H3>USING NAVIGATION TAG</H3>
+    <NAV>
+        <A HREF="wallpaper.jpg">IMAGE</A>
+        <BR>
+        <A HREF="vscode_shortcuts.pdf">DOCUMENT</A>
+        <BR>
+        <A HREF="nature.mp4">VIDEO</A>
+        <BR>
+        <A HREF="naturesounds.mp3">AUDIO</A>
+        <BR>
+    </NAV>
+    <h2 STYLE="color:white;">LINKING IMAGE WITH A WEBPAGE</h2>
+    <A HREF="https://www.youtube.com/watch?v=es4x5R-rV9s"><IMG SRC="wallpaper.jpg" type="image/jpg" height="100%" width="100%"></A>
+</body>
+</html>

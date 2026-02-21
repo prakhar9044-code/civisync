@@ -1,0 +1,26 @@
+#navbar {
+    display:inline;
+    justify-content:space-evenly;
+}
+
+div {
+    background-color:black;
+    color:white;
+    display:flex;
+    justify-content:space-between;
+}
+
+a {
+    text-decoration:none; 
+    color:white;
+}
+
+ul {
+    list-style:none;
+}
+
+#outer {
+    height:400px;
+    width:400px;
+    background-color:blue;
+}

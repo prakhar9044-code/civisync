@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generate User Manual</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+    body { 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        height: 100vh; background: #f0fdf4; 
+    }
+    h1 { color: #166534; margin-bottom: 10px; }
+    button { 
+        padding: 20px 50px; font-size: 1.2rem; background: #10b981; color: white; 
+        border: none; border-radius: 50px; cursor: pointer; 
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4); transition: 0.3s; font-weight: bold; 
+    }
+    button:hover { transform: translateY(-5px); background: #059669; }
+    p { margin-top: 20px; color: #52525b; }
+</style>
+</head>
+<body>
+
+    <h1>PeopleConnect User Guide</h1>
+    <button onclick="generateUserManual()">Download User Manual PDF</button>
+    <p>Click above to generate the guide for end-users.</p>
+
+<script>
+async function generateUserManual() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Colors
+    const primary = [16, 185, 129]; // Green/Teal theme for users
+    const accent = [139, 92, 246]; // Purple accent
+    const dark = [30, 41, 59];
+    const textCol = [71, 85, 105];
+
+    // ================= COVER PAGE =================
+    doc.setFillColor(primary[0], primary[1], primary[2]);
+    doc.rect(0, 0, 210, 297, "F"); 
+    
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(20, 60, 170, 180, 5, 5, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(40);
+    doc.setTextColor(dark[0], dark[1], dark[2]);
+    doc.text("User Manual", 105, 110, null, null, "center");
+    
+    doc.setFontSize(18);
+    doc.setTextColor(accent[0], accent[1], accent[2]);
+    doc.text("PeopleConnect Platform", 105, 125, null, null, "center");
+
+    doc.setFontSize(12);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("A comprehensive guide to your wellness ecosystem.", 105, 140, null, null, "center");
+
+    doc.setFontSize(10);
+    doc.text("Topics Covered:", 105, 180, null, null, "center");
+    doc.text("Wellness Tools | Productivity | Local Resources | Support", 105, 186, null, null, "center");
+
+    // ================= PAGE 2: GETTING STARTED =================
+    doc.addPage();
+    addHeader(doc, "1. Getting Started");
+
+    doc.setFontSize(12);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("Welcome to PeopleConnect. This dashboard consolidates mental health tools", 20, 40);
+    doc.text("and essential resource locators into one easy-to-use interface.", 20, 46);
+
+    doc.setFontSize(14);
+    doc.setTextColor(dark[0], dark[1], dark[2]);
+    doc.text("Navigation Bar Controls", 20, 60);
+
+    const navData = [
+        ['Deep Work', 'Access the Focus Timer and ambient sounds.'],
+        ['Nearby', 'Open the Geo-Locator to find physical resources.'],
+        ['Hub', 'Browse categorized service cards (Food, Shelter, Medical).'],
+        ['Wellness', 'Access the survey, breathing, and grounding tools.'],
+        ['Login / Profile', 'Sign in to save your journal entries and survey history.']
+    ];
+
+    doc.autoTable({
+        startY: 65,
+        head: [['Button Name', 'Function']],
+        body: navData,
+        theme: 'grid',
+        headStyles: { fillColor: primary },
+        styles: { fontSize: 11 }
+    });
+
+    doc.setFontSize(14);
+    doc.setTextColor(239, 68, 68); // Red color for emergency
+    doc.text("Emergency Quick-Actions", 20, doc.lastAutoTable.finalY + 15);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("Located at the top right of your screen (or footer on mobile):", 20, doc.lastAutoTable.finalY + 22);
+    
+    doc.text("• Shield Icon: Instantly dials Police (100).", 25, doc.lastAutoTable.finalY + 30);
+    doc.text("• Truck Icon: Instantly dials Ambulance (108).", 25, doc.lastAutoTable.finalY + 37);
+    doc.text("• Brain Icon: Dials the Mental Health Helpline (1800-599-0019).", 25, doc.lastAutoTable.finalY + 44);
+
+    // ================= PAGE 3: DEEP WORK ZONE =================
+    doc.addPage();
+    addHeader(doc, "2. Deep Work Zone");
+
+    doc.setFontSize(12);
+    doc.text("This section is designed to help you study or work without distractions.", 20, 40);
+
+    // Focus Timer
+    doc.setFontSize(14);
+    doc.setTextColor(accent[0], accent[1], accent[2]);
+    doc.text("A. Focus Timer", 20, 55);
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("1. Set Duration: Enter your desired 'Work' and 'Break' minutes.", 25, 65);
+    doc.text("2. Start Session: Click the purple button to begin the countdown.", 25, 72);
+    doc.text("3. Visual Cues: The coffee cup fills/empties to visualize time passing.", 25, 79);
+    doc.text("4. Reset: Use the circular arrow button to reset the timer.", 25, 86);
+
+    // Ambient Mixer
+    doc.setFontSize(14);
+    doc.setTextColor(accent[0], accent[1], accent[2]);
+    doc.text("B. Ambient Mixer", 20, 100);
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("Customize your environment by dragging the sliders:", 25, 110);
+    doc.text("• Rain Cloud: Adds rainfall and thunder sounds.", 25, 117);
+    doc.text("• Headphones: Adds Lo-Fi study beats.", 25, 124);
+    doc.text("• Coffee Mug: Adds coffee shop chatter ambience.", 25, 131);
+
+    // Brain Dump
+    doc.setFontSize(14);
+    doc.setTextColor(accent[0], accent[1], accent[2]);
+    doc.text("C. Brain Dump Pad", 20, 145);
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("Type distracting thoughts here. They are saved automatically to your", 25, 155);
+    doc.text("browser, so you can deal with them after your focus session.", 25, 162);
+
+    // ================= PAGE 4: LOCATOR & HUB =================
+    doc.addPage();
+    addHeader(doc, "3. Finding Resources");
+
+    doc.setFontSize(14);
+    doc.setTextColor(dark[0], dark[1], dark[2]);
+    doc.text("The Geo-Locator", 20, 40);
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    
+    doc.text("1. Click the 'Start Scanning' button in the 'Services Near You' section.", 25, 50);
+    doc.text("2. Wait for the radar animation to complete.", 25, 57);
+    doc.text("3. View Results: Cards will appear showing distance and status.", 25, 64);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("Understanding Status Badges:", 25, 75);
+    doc.setFont("helvetica", "normal");
+    doc.text("• Green (OPEN NOW): The facility is currently accepting people.", 30, 82);
+    doc.text("• Yellow (CLOSING SOON): Rush, they close shortly.", 30, 89);
+    doc.text("• Purple (MEDICAL): Hospitals or Clinics with 24/7 aid.", 30, 96);
+
+    doc.setFontSize(14);
+    doc.setTextColor(dark[0], dark[1], dark[2]);
+    doc.text("The Service Hub", 20, 115);
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("If you don't need location services, check the static categories:", 25, 125);
+    
+    const hubData = [
+        ['Food & NGOs', 'Community Kitchens verified by local volunteers.'],
+        ['Shelter', 'Government listed night shelters.'],
+        ['Student Care', 'Academic stress support and counseling.'],
+        ['Emergency Blood', 'Live donor database access.']
+    ];
+
+    doc.autoTable({
+        startY: 130,
+        body: hubData,
+        theme: 'striped',
+        styles: { fontSize: 11 }
+    });
+
+    // ================= PAGE 5: WELLNESS CENTER =================
+    doc.addPage();
+    addHeader(doc, "4. Wellness Tools");
+
+    // Survey
+    doc.setFontSize(14);
+    doc.setTextColor(primary[0], primary[1], primary[2]);
+    doc.text("Wellness Assessment Survey", 20, 40);
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("1. Click 'Start Check-In' to answer 8 questions about sleep, mood, and stress.", 25, 50);
+    doc.text("2. Results: You will get a Score (0-100) and a Zone (Green/Yellow/Red).", 25, 57);
+    doc.text("3. Download Report: Click the button to get a PDF with medical advice", 25, 64);
+    doc.text("   and specific recovery protocols tailored to your score.", 25, 71);
+
+    // Breathing
+    doc.setFontSize(14);
+    doc.setTextColor(primary[0], primary[1], primary[2]);
+    doc.text("Breathing & Grounding", 20, 90);
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("• Breathe Tool: Follow the expanding/shrinking circle. Inhale when it grows,", 25, 100);
+    doc.text("  exhale when it shrinks. Helps lower cortisol instantly.", 25, 107);
+    doc.text("• Grounding (5-4-3-2-1): Use this button if you feel a panic attack coming.", 25, 117);
+    doc.text("  The app will guide you to identify things you can See, Touch, Hear, etc.", 25, 124);
+
+    // Journal
+    doc.setFontSize(14);
+    doc.setTextColor(primary[0], primary[1], primary[2]);
+    doc.text("Daily Journal", 20, 140);
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("1. Select an Emoji representing your current mood.", 25, 150);
+    doc.text("2. Type your thoughts in the text area.", 25, 157);
+    doc.text("3. Click 'Save'. You can view past entries in your Profile.", 25, 164);
+
+    // ================= PAGE 6: PROFILE & CHAT =================
+    doc.addPage();
+    addHeader(doc, "5. Profile & Assistance");
+
+    doc.setFontSize(14);
+    doc.setTextColor(dark[0], dark[1], dark[2]);
+    doc.text("User Profile", 20, 40);
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("Click your avatar (Initials) in the top right corner to open your profile.", 25, 50);
+    doc.text("Here you can see:", 25, 57);
+    doc.text("• History of your Assessment Scores.", 30, 64);
+    doc.text("• Your saved Journal Entries.", 30, 71);
+    doc.text("• Logout button.", 30, 78);
+
+    doc.setFontSize(14);
+    doc.setTextColor(dark[0], dark[1], dark[2]);
+    doc.text("AI Assistant", 20, 95);
+    doc.setFontSize(11);
+    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    doc.text("• Click the purple Message icon in the bottom right corner.", 25, 105);
+    doc.text("• Type keywords like 'Food', 'Sad', or 'Shelter'.", 25, 112);
+    doc.text("• The bot will guide you to the relevant section of the website.", 25, 119);
+
+    // FOOTER
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(10);
+        doc.setTextColor(150, 150, 150);
+        doc.text('PeopleConnect User Manual', 20, 285);
+        doc.text('Page ' + i + ' of ' + pageCount, 180, 285);
+    }
+
+    doc.save("PeopleConnect_User_Manual.pdf");
+}
+
+function addHeader(doc, text) {
+    doc.setFontSize(20);
+    doc.setTextColor(16, 185, 129); // Green header
+    doc.setFont("helvetica", "bold");
+    doc.text(text, 20, 20);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, 25, 190, 25);
+    doc.setFont("helvetica", "normal");
+}
+</script>
+</body>
+</html>

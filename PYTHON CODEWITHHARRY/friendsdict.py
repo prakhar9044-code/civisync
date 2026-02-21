@@ -1,0 +1,15 @@
+# to create a dictionary with friends' names and their favourite languages.
+d= {}
+name=input("Enter friend's name:")
+lang=input("Enter friend's favourite language:")
+d.update({name:lang})
+name=input("Enter friend's name:")
+lang=input("Enter friend's favourite language:")
+d.update({name:lang})
+name=input("Enter friend's name:")
+lang=input("Enter friend's favourite language:")
+d.update({name:lang})
+name=input("Enter friend's name:")
+lang=input("Enter friend's favourite language:")
+d.update({name:lang})
+print(d)

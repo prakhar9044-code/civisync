@@ -1,0 +1,14 @@
+body {
+    background-color:black;
+    color:white;
+}
+.personaldetails {
+    border:2px solid navy;
+    border-radius:10px;
+    background-color:navy;
+    color:coral;
+    height:200px;
+    width:500px;
+    text-decoration:underline;
+    
+}
