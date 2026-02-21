@@ -1,8 +1,0 @@
-{
-  "id": "sensor-1",
-  "timestamp": 1730894096789,
-  "telemetry": {
-    "temperature": 22.5,
-    "humidity": 60
-  }
-}
