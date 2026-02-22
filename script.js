@@ -1,876 +1,1015 @@
-/* --- JS NAV RIPPLE & TYPEWRITER ANIMATIONS --- */
-  function createRipple(event) {
-    const button = event.currentTarget;
-    const circle = document.createElement("span");
-    const d = Math.max(button.clientWidth, button.clientHeight);
-    circle.style.width = circle.style.height = `${d}px`;
-    circle.style.left = `${event.clientX - button.getBoundingClientRect().left - d/2}px`;
-    circle.style.top = `${event.clientY - button.getBoundingClientRect().top - d/2}px`;
-    circle.classList.add("ripple");
-    const existing = button.getElementsByClassName("ripple")[0]; 
-    if(existing) existing.remove();
-    button.appendChild(circle);
-  }
+/* ==========================================================================
+   1. CRASH-PROOF API INITIALIZATIONS 
+   ========================================================================== */
+let supabaseClient = null;
+
+try {
+  const { createClient } = supabase;
+  const supabaseUrl = 'https://nsyoivdrcydlfcvipzfy.supabase.co'; 
   
-  function triggerHeroAnimation() {
-    const els = document.querySelectorAll('.reveal-text');
-    els.forEach(el => el.classList.remove('visible'));
-    setTimeout(() => els.forEach(el => el.classList.add('visible')), 100);
-  }
-
-  let typeInterval;
-  function triggerTypewriter() {
-    const el = document.getElementById('typewriter-text');
-    if(!el) return;
-    clearInterval(typeInterval);
-    el.innerHTML = '<span id="tw-content"></span><span class="cursor-blink">&nbsp;</span>';
-    const contentEl = document.getElementById('tw-content');
-    const text = "A Smarter Way to Report,^Track, and Resolve Civic Issues.";
-    let idx = 0;
-    
-    typeInterval = setInterval(() => {
-      if(idx < text.length) {
-        if(text.charAt(idx) === '^') {
-          contentEl.innerHTML += "<br>";
-        } else {
-          contentEl.innerHTML += text.charAt(idx);
-        }
-        idx++;
-      } else {
-        clearInterval(typeInterval);
-      }
-    }, 50);
-  }
+  // 🛑 PASTE YOUR LONG SUPABASE ANON KEY INSIDE THESE QUOTES 🛑
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9pdmRyY3lkbGZjdmlwemZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2ODk0MTQsImV4cCI6MjA4NzI2NTQxNH0.cjoVyfucX3nu0BjBreN2FapxL9h0_dISr6KSat4TNZY"; 
   
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.ripple-element').forEach(btn => btn.addEventListener('click', createRipple));
-    triggerHeroAnimation();
-    triggerTypewriter();
-    
-    // Feature 9: Show digital advisory if unread
-    setTimeout(() => { 
-      document.getElementById('global-advisory').classList.remove('hidden'); 
-    }, 1500);
-  });
+  supabaseClient = createClient(supabaseUrl, supabaseKey);
+} catch (error) {
+  console.error("Supabase Failed to Load - Check your Keys!", error);
+}
 
-  /* --- DATA & STATE (V8 Clean Wipe) --- */
-  const imgPothole = 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80';
-  const imgWater = 'https://images.unsplash.com/photo-1527668752968-14dc70a27c95?auto=format&fit=crop&w=600&q=80';
-  const imgLight = 'https://images.unsplash.com/photo-1510133744874-096980d58fd0?auto=format&fit=crop&w=600&q=80';
-  const imgTrash = 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=600&q=80';
-  const imgFlood = 'https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=600&q=80';
-  const imgTraffic = 'https://images.unsplash.com/photo-1506526611364-16a2468f7d92?auto=format&fit=crop&w=600&q=80';
+try {
+  // Your real EmailJS Public Key
+  emailjs.init("x81DiBvSLoBxiEnmx");
+} catch (error) {
+  console.error("EmailJS Failed to Load!", error);
+}
 
-  let currentFileBase64 = imgPothole; 
+// NOTE: External AI APIs (Gemini/OpenAI) removed as requested. Using Local Rule-Based Bot.
+
+/* ==========================================================================
+   2. GLOBAL STATE VARIABLES 
+   ========================================================================== */
+let currentUser = JSON.parse(sessionStorage.getItem('civisync_user')) || null; 
+let trackTabActive = 'All'; 
+let mapInstance = null; 
+let dedicatedMapInstance = null; 
+let activeModalIssueId = null; 
+let charts = {};
+let truckTweens = [];
+let currentFileBase64 = 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80';
+let typeInterval; 
+let pendingLoginEmail = ""; 
+let realGeneratedOTP = "";
+let resetEmailMemory = "";
+let resetOTPMemory = "";
+
+/* ==========================================================================
+   3. 3D LANGUAGE TOGGLE LOGIC
+   ========================================================================== */
+const languages = [
+  { code: 'EN', flag: '🌐', text: 'EN', heroSub: 'Empowering citizens with AI-driven routing, transparent budget tracking, and community volunteering.', titleTest: 'What Our City Says' },
+  { code: 'HI', flag: '🇮🇳', text: 'HI', heroSub: 'एआई-संचालित रूटिंग, पारदर्शी बजट ट्रैकिंग और सामुदायिक स्वयंसेवा के साथ नागरिकों को सशक्त बनाना।', titleTest: 'हमारा शहर क्या कहता है' },
+  { code: 'ES', flag: '🇪🇸', text: 'ES', heroSub: 'Empoderando a los ciudadanos con enrutamiento guiado por IA y voluntariado comunitario.', titleTest: 'Lo que dice nuestra ciudad' }
+];
+let currLangIdx = 0;
+
+function cycleLanguage() {
+  currLangIdx = (currLangIdx + 1) % languages.length;
+  const l = languages[currLangIdx];
   
-  function createHash() { 
-    return '0x' + Math.random().toString(16).slice(2, 10) + '...' + Math.random().toString(16).slice(2, 6); 
-  }
+  const langLabel = document.getElementById('lang-label');
+  if(langLabel) langLabel.innerText = `${l.flag} ${l.text}`;
+  
+  const heroSub = document.getElementById('hero-sub');
+  if(heroSub) heroSub.innerText = l.heroSub;
+  
+  const tTitle = document.getElementById('title-testimonial');
+  if(tTitle) tTitle.innerText = l.titleTest;
 
-  const defaultDB = [
-    { 
-      id: 'ISS001', title: 'Large pothole on MG Road', category: 'Pothole', desc: 'Major accident risk. Requires immediate asphalt filling.', location: 'MG Road', 
-      priority: 'high', status: 'pending', time: '2d ago', upvotes: 47, dept: 'Public Works', img: imgPothole, lat: 31.6340, lng: 74.8723, 
-      budget: 'Pending Budget Constraint', tempAction: '🚧 Warning Sign Installed', volunteers: 2, schedule: 'Next Budget Cycle - Q3 2026', 
-      history: [{stat:'pending | Pending Budget Constraint', date:new Date().toISOString(), hash:createHash()}] 
-    },
-    { 
-      id: 'ISS002', title: 'Water leakage from main pipeline', category: 'Water Leak', desc: 'Continuous wastage filling up the street.', location: 'Park Street, Sector 15', 
-      priority: 'high', status: 'in progress', time: '1d ago', upvotes: 32, dept: 'Water Department', img: imgWater, lat: 31.6400, lng: 74.8600, 
-      budget: 'Funded', tempAction: 'Valve Partially Closed to reduce pressure', volunteers: 0, schedule: 'Immediate Action Taken', 
-      history: [{stat:'in progress | Funded', date:new Date().toISOString(), hash:createHash()}] 
-    },
-    { 
-      id: 'ISS003', title: 'Broken streetlight creating safety hazard', category: 'Electrical', desc: 'Dark area at night causing mugging risks.', location: 'Green Avenue', 
-      priority: 'medium', status: 'resolved', time: '9d ago', upvotes: 23, dept: 'Electrical', img: imgLight, lat: 31.6200, lng: 74.8800, 
-      budget: 'Funded', tempAction: '', volunteers: 0, schedule: 'Completed', 
-      history: [{stat:'resolved | Funded', date:new Date().toISOString(), hash:createHash()}] 
-    },
-    { 
-      id: 'ISS004', title: 'Overflowing garbage bins', category: 'Garbage', desc: 'Waste overflowing for 4 days. Strong odor.', location: 'Market Road', 
-      priority: 'medium', status: 'pending', time: '2d ago', upvotes: 56, dept: 'Sanitation', img: imgTrash, lat: 31.6500, lng: 74.8500, 
-      budget: 'Pending Budget Constraint', tempAction: 'Area Secured & Sanitized Temporarily', volunteers: 14, schedule: 'Weekend Cleanup Drive Scheduled', 
-      history: [{stat:'pending | Pending Budget Constraint', date:new Date().toISOString(), hash:createHash()}] 
+  showToast(`Language switched to ${l.text}`, 'primary', l.flag);
+}
+
+/* ==========================================================================
+   4. LOCAL RULE-BASED ACTION CHATBOT (No API Required)
+   ========================================================================== */
+function toggleChat() { 
+  const cw = document.getElementById('chat-window'); 
+  if(cw) {
+    cw.classList.toggle('hidden');
+    if(!cw.classList.contains('hidden') && typeof gsap !== 'undefined') gsap.fromTo(cw, {opacity:0, y:20}, {opacity:1, y:0, duration:0.3});
+  }
+}
+
+function quickReply(txt) { 
+  const cm = document.getElementById('chat-msg'); 
+  if(cm) { cm.value = txt; sendLocalChat(); } 
+}
+
+function sendLocalChat() {
+  const input = document.getElementById('chat-msg'); 
+  const rawTxt = input.value.trim().toLowerCase(); 
+  if(!rawTxt) return;
+  const body = document.getElementById('chat-body'); 
+  
+  body.innerHTML += `<div class="chat-msg msg-user">${input.value}</div>`; 
+  input.value = ''; body.scrollTop = body.scrollHeight;
+  
+  const typingId = 'typing-' + Date.now();
+  body.innerHTML += `<div id="${typingId}" class="chat-msg msg-bot" style="font-style:italic; opacity:0.7;">Processing request...</div>`;
+  body.scrollTop = body.scrollHeight;
+
+  setTimeout(() => {
+    document.getElementById(typingId).remove();
+    let reply = "I'm the local CiviBot! I can help you navigate. Try asking me to 'report an issue', 'track complaints', 'volunteer', or 'view points'.";
+
+    if (rawTxt.includes('report') || rawTxt.includes('pothole') || rawTxt.includes('issue')) {
+      reply = "✅ Taking you to the Issue Uplink portal right now!";
+      setTimeout(() => checkAuthAndGo('report'), 1500);
+    } 
+    else if (rawTxt.includes('track') || rawTxt.includes('status') || rawTxt.includes('delay')) {
+      reply = "✅ Fetching the Tracking Dashboard for you!";
+      setTimeout(() => checkAuthAndGo('track'), 1500);
+    } 
+    else if (rawTxt.includes('volunteer') || rawTxt.includes('ngo') || rawTxt.includes('adopt')) {
+      reply = "✅ Routing you to the Community NGO Hub!";
+      setTimeout(() => checkAuthAndGo('ngo'), 1500);
+    } 
+    else if (rawTxt.includes('point') || rawTxt.includes('reward') || rawTxt.includes('score')) {
+      reply = "✅ Opening your Civic Points & Rewards page!";
+      setTimeout(() => checkAuthAndGo('points'), 1500);
     }
-  ];
-
-  /* FORCE DB WIPE WITH V8 */
-  function getDB() { 
-    if(!localStorage.getItem('civisync_db_v8')) {
-      localStorage.setItem('civisync_db_v8', JSON.stringify(defaultDB)); 
-    }
-    return JSON.parse(localStorage.getItem('civisync_db_v8')); 
-  }
-  
-  function setDB(data) { 
-    localStorage.setItem('civisync_db_v8', JSON.stringify(data)); 
-  }
-
-  let currentUser = null; 
-  let trackTabActive = 'All'; 
-  let mapInstance = null; 
-  let dedicatedMapInstance = null; 
-  let activeModalIssueId = null; 
-  let charts = {};
-
-  /* --- OFFLINE SYNC --- */
-  window.addEventListener('online', syncOfflineQueue);
-  window.addEventListener('offline', () => document.getElementById('offline-banner').style.display = 'block');
-
-  function syncOfflineQueue() {
-    document.getElementById('offline-banner').style.display = 'none';
-    let queue = JSON.parse(localStorage.getItem('civisync_offline_v8') || '[]');
-    if(queue.length > 0) {
-      let db = getDB(); 
-      db = [...queue, ...db]; 
-      setDB(db); 
-      localStorage.removeItem('civisync_offline_v8');
-      alert(`Synced ${queue.length} reports submitted while offline!`);
-      if(document.getElementById('view-track').classList.contains('active')) {
-        renderTrack();
-      }
-    }
-  }
-
-  /* --- GLOBAL RE-RENDER HELPER --- */
-  function reRenderAllActive() {
-    renderTrack();
-    if(document.getElementById('view-admin').classList.contains('active')) renderAdmin();
-    if(document.getElementById('view-budget').classList.contains('active')) renderBudget();
-    if(document.getElementById('view-ngo').classList.contains('active')) renderNgo();
-    if(document.getElementById('view-analytics').classList.contains('active')) renderAnalytics();
-    if(document.getElementById('view-leaderboard').classList.contains('active')) updateLeaderboard();
-  }
-
-  /* --- AUTH & NAVIGATION --- */
-  function toggleTheme() { 
-    document.body.classList.toggle('dark-theme'); 
-  }
-  
-  function navigate(viewId) {
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById(`view-${viewId}`).classList.add('active');
-    
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    if(document.getElementById(`nav-${viewId}`)) {
-      document.getElementById(`nav-${viewId}`).classList.add('active');
-    }
-    
-    if(viewId === 'landing') { triggerHeroAnimation(); triggerTypewriter(); }
-    if(viewId === 'track') renderTrack();
-    if(viewId === 'admin') renderAdmin();
-    if(viewId === 'analytics') renderAnalytics();
-    if(viewId === 'map') initDedicatedMap();
-    if(viewId === 'ngo') renderNgo();
-    if(viewId === 'budget') renderBudget();
-    if(viewId === 'leaderboard') updateLeaderboard();
-    
-    // Bind profile values dynamic
-    if(viewId === 'profile' && currentUser) {
-      document.getElementById('prof-name').innerText = currentUser.name;
-      document.getElementById('prof-email').innerText = currentUser.email;
-      document.getElementById('prof-avatar').innerText = currentUser.name.charAt(0).toUpperCase();
-      document.getElementById('prof-pts').innerText = currentUser.points;
-      document.getElementById('prof-reported').innerText = currentUser.reported;
-      document.getElementById('prof-vol').innerText = currentUser.volunteered;
-      document.getElementById('prof-role-badge').innerText = currentUser.role === 'admin' ? "Authority" : "Citizen";
-    }
-    if(viewId === 'points' && currentUser) { 
-      document.getElementById('manage-pts').innerText = currentUser.points; 
-    }
-    window.scrollTo(0,0);
-  }
-  
-  function checkAuthAndGo(viewId) { 
-    if(!currentUser || currentUser.role !== 'citizen') { 
-      alert("Please login to access this feature."); 
-      navigate('auth'); 
-      switchAuthTab('citizen'); 
-    } else {
-      navigate(viewId);
-    }
-  }
-  
-  function switchAuthTab(type) {
-    document.getElementById('area-cit').style.animation='none'; 
-    document.getElementById('form-adm').style.animation='none';
-    
-    document.getElementById('area-cit').classList.toggle('hidden', type !== 'citizen'); 
-    document.getElementById('form-adm').classList.toggle('hidden', type !== 'admin');
-    
-    setTimeout(() => { 
-      document.getElementById('area-cit').style.animation=''; 
-      document.getElementById('form-adm').style.animation=''; 
-    }, 10);
-    
-    const tCit = document.getElementById('tab-cit'); 
-    const tAdm = document.getElementById('tab-adm');
-    
-    if(type === 'citizen') { 
-      tCit.style.borderBottomColor='var(--primary)'; 
-      tCit.style.color='var(--primary)'; 
-      tAdm.style.borderBottomColor='transparent'; 
-      tAdm.style.color='var(--text-secondary)'; 
-    } else { 
-      tAdm.style.borderBottomColor='var(--primary)'; 
-      tAdm.style.color='var(--primary)'; 
-      tCit.style.borderBottomColor='transparent'; 
-      tCit.style.color='var(--text-secondary)'; 
-    }
-  }
-  
-  function toggleCitAuth(action) {
-    document.getElementById('form-cit-login').style.animation='none'; 
-    document.getElementById('form-cit-register').style.animation='none';
-    
-    document.getElementById('form-cit-login').classList.toggle('hidden', action !== 'login'); 
-    document.getElementById('form-cit-register').classList.toggle('hidden', action !== 'register');
-    document.getElementById('btn-login-cit').classList.toggle('active', action === 'login'); 
-    document.getElementById('btn-reg-cit').classList.toggle('active', action === 'register');
-    
-    setTimeout(() => { 
-      document.getElementById('form-cit-login').style.animation=''; 
-      document.getElementById('form-cit-register').style.animation=''; 
-    }, 10);
-  }
-  
-  function handleAuth(e, type) {
-    e.preventDefault(); 
-    
-    // Capture Dynamic User Info
-    let uName = "User";
-    let uEmail = "user@example.com";
-
-    if(type === 'citizen') {
-      const formId = e.target.id;
-      if(formId === 'form-cit-register') {
-        uName = e.target.querySelectorAll('input[type="text"]')[0].value || "Citizen";
-        uEmail = e.target.querySelectorAll('input[type="email"]')[0].value;
-      } else {
-        uEmail = e.target.querySelectorAll('input[type="email"]')[0].value;
-        uName = uEmail.split('@')[0]; // Quick mock name from email
-      }
-    } else {
-      uName = "City Admin";
-      uEmail = e.target.querySelectorAll('input[type="text"]')[0].value;
+    else if (rawTxt.includes('hello') || rawTxt.includes('hi ') || rawTxt === 'hi') {
+      reply = "Hello there! How can I help you improve our city today?";
     }
 
-    currentUser = { 
-      name: uName, 
-      email: uEmail, 
-      role: type, 
-      points: 150, 
-      reported: 0, 
-      volunteered: 0 
-    }; 
-    
-    // UI Update - Setup Avatar Dropdown
-    document.getElementById('btn-auth').classList.add('hidden');
-    document.getElementById('user-menu-container').classList.remove('hidden');
-    document.getElementById('avatar-initials').innerText = uName.charAt(0).toUpperCase();
-    document.getElementById('drop-name').innerText = uName;
-    document.getElementById('drop-email').innerText = uEmail;
-    
-    // Show authorized links
-    document.querySelectorAll('.auth-req').forEach(el => el.classList.remove('hidden'));
-
-    if(type === 'citizen') { 
-      document.getElementById('user-points').classList.remove('hidden'); 
-      document.getElementById('pts-val').innerText = currentUser.points; 
-      
-      // Hide Admin specific stuff
-      document.getElementById('nav-admin').classList.add('hidden');
-      document.getElementById('nav-budget').classList.add('hidden');
-      document.getElementById('nav-analytics').classList.add('hidden');
-      
-      // FIX 3: Route Citizens directly to the Issues Dashboard after Login
-      navigate('track'); 
-    } else { 
-      // Hide Citizen specific stuff
-      document.getElementById('nav-points').classList.add('hidden');
-      document.getElementById('nav-ngo').classList.add('hidden');
-      document.getElementById('nav-leaderboard').classList.add('hidden');
-      document.getElementById('user-points').classList.add('hidden');
-      
-      // FIX 3: Route Authorities directly to the Admin Dashboard after Login
-      navigate('admin'); 
-    }
-  }
-  
-  function logout() { 
-    currentUser = null; 
-    document.getElementById('btn-auth').classList.remove('hidden'); 
-    document.getElementById('user-menu-container').classList.add('hidden');
-    
-    // Hide auth-req elements
-    document.querySelectorAll('.auth-req').forEach(el => el.classList.add('hidden'));
-    document.getElementById('user-points').classList.add('hidden'); 
-    
-    navigate('landing'); 
-  }
-
-  function updateLeaderboard() {
-    if(currentUser) {
-      document.getElementById('lb-current-user').innerText = currentUser.name + " (You)";
-      document.getElementById('lb-current-issues').innerText = currentUser.reported + currentUser.volunteered;
-      document.getElementById('lb-current-points').innerText = currentUser.points;
-    }
-  }
-
-  /* --- REPORT ISSUE --- */
-  function getLocation() { 
-    if(navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => { 
-        document.getElementById('repLoc').value = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`; 
-      }, () => alert("Location denied.")); 
-    } else {
-      alert("Geolocation is not supported by this browser.");
-    }
-  }
-  
-  function handleImageUpload(e) { 
-    const file = e.target.files[0];
-    if(file) {
-      const r = new FileReader(); 
-      r.onload = ev => { 
-        currentFileBase64 = ev.target.result; 
-        document.getElementById('uploadStatus').innerText="✓ Image ready"; 
-      }; 
-      r.readAsDataURL(file); 
-    }
-  }
-  
-  function startDictation() {
-    if(window.webkitSpeechRecognition) {
-      const rec = new webkitSpeechRecognition(); 
-      rec.start(); 
-      const b = document.getElementById('btnMic'); 
-      b.classList.add('recording');
-      
-      rec.onresult = e => { 
-        document.getElementById('repDesc').value += e.results[0][0].transcript; 
-        triggerAICategorization(); 
-        b.classList.remove('recording'); 
-      };
-      
-      rec.onerror = () => {
-        alert("Speech recognition failed or was cancelled.");
-        b.classList.remove('recording');
-      };
-    } else {
-      alert("Speech recognition not supported in this browser. Try Google Chrome.");
-    }
-  }
-  
-  function triggerAICategorization() {
-    const t = document.getElementById('repDesc').value.toLowerCase(); 
-    const s = document.getElementById('repCat');
-    const tag = document.getElementById('aiTag');
-    
-    let found = false;
-    if(t.includes('pothole') || t.includes('road')) { s.value='Pothole'; found = true; } 
-    else if(t.includes('water') || t.includes('leak') || t.includes('pipe')) { s.value='Water Leak'; found = true; } 
-    else if(t.includes('light') || t.includes('dark')) { s.value='Electrical'; found = true; }
-    
-    if(found) {
-      tag.style.display = 'inline-block';
-      setTimeout(() => { tag.style.display = 'none'; }, 3000);
-    }
-  }
-  
-  function submitReport(e) {
-    e.preventDefault();
-    const cat = document.getElementById('repCat').value;
-    const desc = document.getElementById('repDesc').value;
-    const routing = {'Pothole':'Public Works', 'Water Leak':'Water Department', 'Electrical':'Electrical', 'Garbage':'Sanitation', 'Drainage':'Public Works', 'Traffic':'Traffic'};
-    const isHigh = desc.toLowerCase().includes('accident') || desc.toLowerCase().includes('flood') || desc.toLowerCase().includes('danger');
-    
-    const issue = { 
-      id: `ISS00${Math.floor(Math.random()*900)+100}`, 
-      title: document.getElementById('repTitle').value, 
-      category: cat, 
-      desc: desc, 
-      location: document.getElementById('repLoc').value, 
-      priority: isHigh ? 'high' : 'medium', 
-      status: 'pending', 
-      time: 'Just now', 
-      upvotes: 0, 
-      dept: routing[cat] || 'General', 
-      img: currentFileBase64, 
-      lat: 31.63 + (Math.random()*0.02 - 0.01), 
-      lng: 74.87 + (Math.random()*0.02 - 0.01), 
-      budget: 'Pending Budget Constraint', 
-      tempAction: '', 
-      volunteers: 0, 
-      schedule: 'Awaiting Assessment', 
-      history: [{stat:'pending | Pending Budget Constraint', date:new Date().toISOString(), hash:createHash()}] 
-    };
-    
-    if(!navigator.onLine) {
-      let q = JSON.parse(localStorage.getItem('civisync_offline_v8') || '[]');
-      q.push(issue); 
-      localStorage.setItem('civisync_offline_v8', JSON.stringify(q));
-      alert("Saved offline. Will sync when connected.");
-    } else {
-      let db = getDB(); 
-      db.unshift(issue); 
-      setDB(db);
-    }
-
-    if(currentUser){ 
-      currentUser.points += 10;
-      currentUser.reported += 1; // Update Profile Stats 
-      document.getElementById('pts-val').innerText = currentUser.points; 
-    }
-    
-    e.target.reset(); 
-    currentFileBase64 = imgPothole; 
-    document.getElementById('uploadStatus').innerText = '';
-    
-    alert(`Report submitted successfully! Tracking ID: ${issue.id}`);
-    
-    // Globally re-render to update the tables instantly
-    reRenderAllActive();
-    navigate('track');
-  }
-
-  /* --- TRACK ISSUES & MAPS --- */
-  function setTrackTab(tab, el) { 
-    trackTabActive = tab; 
-    document.querySelectorAll('.tab-pill').forEach(t=>t.classList.remove('active')); 
-    el.classList.add('active'); 
-    renderTrack(); 
-  }
-  
-  function switchTrackView(v) {
-    const isL = v === 'list'; 
-    document.getElementById('track-list-container').classList.toggle('hidden',!isL); 
-    document.getElementById('track-map-container').classList.toggle('hidden',isL);
-    
-    const btnL = document.getElementById('btn-list-view'); 
-    const btnM = document.getElementById('btn-map-view');
-    
-    if(isL) {
-      btnL.style.background = 'var(--bg-app)'; btnL.style.color = 'var(--primary)'; btnL.style.fontWeight = '600';
-      btnM.style.background = 'transparent'; btnM.style.color = 'var(--text-secondary)'; btnM.style.fontWeight = '500';
-    } else {
-      btnM.style.background = 'var(--bg-app)'; btnM.style.color = 'var(--primary)'; btnM.style.fontWeight = '600';
-      btnL.style.background = 'transparent'; btnL.style.color = 'var(--text-secondary)'; btnL.style.fontWeight = '500';
-      initMap();
-    }
-  }
-  
-  function getBadgeHTML(t, v) {
-    if(t === 'status') return `<span class="badge badge-${v.replace(' ','-')} status-badge">${v.toUpperCase()}</span>`;
-    return `<span class="badge badge-${v}">${v}</span>`;
-  }
-  
-  function renderTrack() {
-    let db = getDB();
-    
-    document.getElementById('cnt-all').innerText = db.length; 
-    document.getElementById('cnt-pen').innerText = db.filter(i=>i.status==='pending').length;
-    document.getElementById('cnt-prog').innerText = db.filter(i=>i.status==='in progress').length;
-    document.getElementById('cnt-res').innerText = db.filter(i=>i.status==='resolved').length;
-    
-    const search = document.getElementById('trackSearch').value.toLowerCase();
-    const cat = document.getElementById('trackCatFilter').value;
-    
-    if(search) db = db.filter(i => i.title.toLowerCase().includes(search) || i.desc.toLowerCase().includes(search));
-    if(cat) db = db.filter(i => i.category === cat);
-    if(trackTabActive !== 'All') db = db.filter(i => i.status === trackTabActive);
-    
-    const cont = document.getElementById('track-list-container');
-    
-    if(db.length === 0) { 
-      cont.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align:center; padding: 2rem;">No issues found matching your filters.</p>'; 
-      return; 
-    }
-    
-    cont.innerHTML = db.map(i => `
-      <div class="issue-card-clean" onclick="openModal('${i.id}')">
-        <div class="issue-img-wrapper">
-          ${getBadgeHTML('status', i.status)}
-          <img src="${i.img}" onerror="this.src='${imgPothole}'">
-        </div>
-        <div class="issue-card-content">
-          <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-            <span class="text-xs text-muted font-monospace">${i.id}</span>
-            ${getBadgeHTML('priority', i.priority)}
-          </div>
-          <h3 style="font-size:1.05rem; margin-bottom:0.5rem;">${i.title}</h3>
-          ${i.budget.includes('Pending') ? `<span style="font-size:0.75rem; color:#b45309; background:#fef3c7; padding:2px 6px; border-radius:4px; margin-bottom:10px; display:inline-block;">⚠️ Budget Delayed</span>` : ''}
-          <div style="display:flex; justify-content:space-between; border-top:1px solid var(--border); padding-top:0.75rem; margin-top:auto;">
-            <span class="badge badge-outline">${i.category}</span>
-            <span class="text-xs text-primary font-medium">⬆ ${i.upvotes} Upvotes</span>
-          </div>
-        </div>
-      </div>`).join('');
-  }
-  
-  function initMap() { 
-    if(!mapInstance){ 
-      mapInstance = L.map('leaflet-map').setView([31.634, 74.872], 13); 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance); 
-    }
-    mapInstance.eachLayer(l => { if(l instanceof L.Marker) mapInstance.removeLayer(l); });
-    
-    getDB().forEach(i => {
-      if(i.lat && i.lng) {
-        const color = i.priority==='high' ? '#ef4444' : (i.priority==='medium' ? '#f59e0b' : '#10b981');
-        const icon = L.divIcon({className: 'custom-icon', html: `<div style="background:${color}; width:16px; height:16px; border-radius:50%; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.4);"></div>`});
-        L.marker([i.lat, i.lng], {icon}).addTo(mapInstance).bindPopup(`<b>${i.id}</b><br>${i.category}<br><button class="btn btn-outline text-xs" style="margin-top:5px;" onclick="openModal('${i.id}')">View Details</button>`);
-      }
-    });
-    setTimeout(() => mapInstance.invalidateSize(), 100);
-  }
-  
-  function initDedicatedMap() { 
-    if(!dedicatedMapInstance){ 
-      dedicatedMapInstance = L.map('dedicated-map').setView([31.634, 74.872], 13); 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dedicatedMapInstance); 
-    }
-    dedicatedMapInstance.eachLayer(l => { if(l instanceof L.Marker) dedicatedMapInstance.removeLayer(l); });
-    
-    getDB().forEach(i => {
-      if(i.lat && i.lng) {
-        const color = i.priority==='high' ? '#ef4444' : (i.priority==='medium' ? '#f59e0b' : '#10b981');
-        const icon = L.divIcon({className: 'custom-icon', html: `<div style="background:${color}; width:16px; height:16px; border-radius:50%; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.4);"></div>`});
-        L.marker([i.lat, i.lng], {icon}).addTo(dedicatedMapInstance).bindPopup(`<b>${i.title}</b><br>${i.status}<br><button class="btn btn-outline text-xs" style="margin-top:5px;" onclick="openModal('${i.id}')">View Details</button>`);
-      }
-    });
-    setTimeout(() => dedicatedMapInstance.invalidateSize(), 100);
-  }
-
-  /* --- NGO HUB --- */
-  function renderNgo() {
-    const db = getDB();
-    const unfunded = db.filter(i => i.budget.includes('Pending'));
-    const cont = document.getElementById('ngo-issue-list');
-    
-    if(unfunded.length === 0) {
-      cont.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align:center;">No unfunded issues right now! Great job city.</p>';
-      return;
-    }
-    
-    cont.innerHTML = unfunded.map(i => `
-      <div class="issue-card-clean" style="border-color: var(--purple);">
-        <div class="issue-img-wrapper"><img src="${i.img}" onerror="this.src='${imgPothole}'"></div>
-        <div class="issue-card-content">
-          <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-            <span class="text-xs text-muted">${i.id}</span>
-            <span class="badge badge-high">Unfunded</span>
-          </div>
-          <h3 style="font-size:1.05rem; margin-bottom:0.5rem;">${i.title}</h3>
-          <p class="text-xs text-muted mb-2">📍 ${i.location}</p>
-          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:0.75rem; margin-top:auto;">
-            <span class="text-xs text-purple font-medium">👥 ${i.volunteers} Volunteers</span>
-            <button class="btn text-xs" style="background:var(--purple); color:white; border-radius:50px; cursor:pointer;" onclick="pledgeSupport('${i.id}')">Pledge / Adopt</button>
-          </div>
-        </div>
-      </div>`).join('');
-  }
-  
-  function pledgeSupport(id) {
-    if(!currentUser || currentUser.role !== 'citizen') return alert("Please log in as an NGO/Citizen first.");
-    let db = getDB(); 
-    let idx = db.findIndex(i => i.id === id); 
-    db[idx].volunteers += 5; // Simulating a group adoption
-    setDB(db);
-    
-    if(currentUser) currentUser.volunteered += 1;
-
-    alert(`Thank you! Your NGO has pledged support for Issue ${id}. The city admin has been notified.`);
-    reRenderAllActive();
-  }
-
-  /* --- BUDGET MANAGEMENT --- */
-  function renderBudget() {
-    const db = getDB();
-    const pendingIssues = db.filter(i => i.budget.includes('Pending'));
-    const tbody = document.getElementById('budget-approval-table');
-    
-    if(pendingIssues.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">All issues are currently funded.</td></tr>';
-      return;
-    }
-    
-    tbody.innerHTML = pendingIssues.map(i => {
-      const cost = i.priority === 'high' ? '₹75,000' : '₹25,000';
-      return `
-      <tr>
-        <td><span class="table-id">${i.id}</span></td>
-        <td>
-          <div class="font-medium">${i.title}</div>
-          <div class="text-xs text-muted">📍 ${i.location}</div>
-        </td>
-        <td><span class="badge badge-outline">${i.dept}</span></td>
-        <td class="font-medium" style="color:var(--danger);">${cost}</td>
-        <td><button type="button" class="btn btn-success text-xs" style="border-radius:50px; position:relative; z-index:10; cursor:pointer;" onclick="allocateFunds('${i.id}'); event.stopPropagation();">Approve Funds</button></td>
-      </tr>
-      `;
-    }).join('');
-  }
-  
-  function allocateFunds(id) {
-    let db = getDB(); 
-    let idx = db.findIndex(i => i.id === id); 
-    db[idx].budget = 'Funded'; 
-    db[idx].status = 'in progress';
-    db[idx].history.push({stat: 'in progress | Funded', date: new Date().toISOString(), hash: createHash()}); 
-    setDB(db);
-    alert(`Funds successfully allocated for Issue ${id}. Status changed to 'In Progress'.`);
-    reRenderAllActive();
-  }
-
-  /* --- MODAL LOGIC --- */
-  function openModal(id) {
-    activeModalIssueId = id; 
-    const iss = getDB().find(i => i.id === id); 
-    if(!iss) return;
-    
-    document.getElementById('mod-title').innerText = iss.title; 
-    document.getElementById('mod-id').innerText = iss.id;
-    document.getElementById('mod-time').innerText = iss.time; 
-    document.getElementById('mod-cat').innerText = iss.category;
-    document.getElementById('mod-prio').innerHTML = getBadgeHTML('priority', iss.priority); 
-    document.getElementById('mod-stat').innerHTML = getBadgeHTML('status', iss.status);
-    
-    const modImg = document.getElementById('mod-img');
-    modImg.src = iss.img; 
-    modImg.onerror = function() { this.src = imgPothole; };
-
-    document.getElementById('mod-desc').innerText = iss.desc;
-    
-    let budgCol = iss.budget.includes('Funded') ? 'var(--success)' : (iss.budget.includes('Pending') ? 'var(--danger)' : 'var(--warning)');
-    document.getElementById('mod-budget-badge').innerHTML = `<span style="background:transparent; border:1px solid ${budgCol}; color:${budgCol}; padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">${iss.budget}</span>`;
-    document.getElementById('mod-schedule').innerText = "📅 Schedule: " + iss.schedule;
-
-    const tempSec = document.getElementById('mod-temp-sec');
-    if(iss.tempAction) { tempSec.innerHTML = `<div class="temp-action-banner"><span>${iss.tempAction}</span></div>`; } 
-    else { tempSec.innerHTML = ''; }
-
-    document.getElementById('mod-vol-count').innerText = iss.volunteers;
-    document.getElementById('mod-dept').innerText = iss.dept; 
-    document.getElementById('mod-upv-cnt').innerText = iss.upvotes;
-    
-    document.getElementById('mod-timeline').innerHTML = iss.history.map(h => `
-      <div class="log-entry">
-        <strong style="text-transform:uppercase;">${h.stat.split('|')[0]}</strong> - ${new Date(h.date).toLocaleString()}
-        <br><span class="hash-text">Hash: ${h.hash}</span>
-      </div>
-    `).join('');
-    
-    document.getElementById('admin-update-area').classList.toggle('hidden', !currentUser || currentUser.role !== 'admin');
-    
-    if(currentUser && currentUser.role === 'admin') {
-      document.getElementById('admin-sel-stat').value = iss.status;
-      // Safeguard: Check if the options match the string, otherwise keep empty
-      let matchingOption = Array.from(document.getElementById('admin-sel-budget').options).find(opt => opt.value === iss.budget);
-      if(matchingOption) document.getElementById('admin-sel-budget').value = iss.budget;
-    }
-    
-    document.getElementById('modal').classList.add('open');
-  }
-  
-  function closeModal() { 
-    document.getElementById('modal').classList.remove('open'); 
-    activeModalIssueId = null; 
-  }
-  
-  function upvoteIssue() {
-    if(!currentUser || currentUser.role !== 'citizen') return alert("Citizen login required.");
-    let db = getDB(); let idx = db.findIndex(i => i.id === activeModalIssueId); 
-    db[idx].upvotes++; setDB(db); 
-    document.getElementById('mod-upv-cnt').innerText = db[idx].upvotes;
-    
-    reRenderAllActive();
-  }
-  
-  function volunteerForIssue() {
-    if(!currentUser || currentUser.role !== 'citizen') return alert("Please login as a Citizen to volunteer.");
-    let db = getDB(); let idx = db.findIndex(i => i.id === activeModalIssueId); 
-    db[idx].volunteers++; setDB(db); 
-    document.getElementById('mod-vol-count').innerText = db[idx].volunteers;
-    
-    if(currentUser) currentUser.volunteered += 1;
-
-    alert("Thank you! You have adopted this issue. The community action team will email you details.");
-    reRenderAllActive();
-  }
-  
-  function adminSaveStatus() {
-    const s = document.getElementById('admin-sel-stat').value; 
-    const b = document.getElementById('admin-sel-budget').value;
-    let db = getDB(); let idx = db.findIndex(i => i.id === activeModalIssueId); 
-    
-    db[idx].status = s; 
-    db[idx].budget = b; 
-    db[idx].history.push({stat: `${s} | ${b}`, date: new Date().toISOString(), hash: createHash()}); 
-    setDB(db);
-    
-    alert("Issue updated successfully!");
-    closeModal();
-    reRenderAllActive(); // Instantly update the authority dashboard
-  }
-
-  /* --- ADMIN DASHBOARD & REAL PDF GENERATION --- */
-  function generatePDFReport() {
-    const element = document.getElementById('pdf-content');
-    const tbody = document.getElementById('pdf-table-body');
-    const db = getDB();
-    
-    const delayed = db.filter(i => i.priority === 'high' || i.budget.includes('Pending'));
-    
-    document.getElementById('pdf-date').innerText = new Date().toLocaleDateString();
-    
-    if(delayed.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="padding:10px; text-align:center;">No critical or delayed issues at this time.</td></tr>';
-    } else {
-      tbody.innerHTML = delayed.map(i => `
-        <tr>
-          <td style="padding: 10px; border: 1px solid #e2e8f0; font-family: monospace;">${i.id}</td>
-          <td style="padding: 10px; border: 1px solid #e2e8f0;">${i.title}</td>
-          <td style="padding: 10px; border: 1px solid #e2e8f0;">${i.dept}</td>
-          <td style="padding: 10px; border: 1px solid #e2e8f0; color: ${i.budget.includes('Pending') ? '#ef4444' : '#10b981'}; font-weight: bold;">${i.budget}</td>
-        </tr>
-      `).join('');
-    }
-
-    element.classList.remove('hidden');
-
-    const opt = {
-      margin:       0.5,
-      filename:     'CiviSync-Escalation-Report.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2 },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opt).from(element).save().then(() => {
-      element.classList.add('hidden');
-    });
-  }
-  
-  function renderAdmin() {
-    const db = getDB();
-    const total = db.length;
-    const pending = db.filter(i=>i.status==='pending').length;
-    const delayed = db.filter(i=>i.budget.includes('Pending')).length;
-    const resolved = db.filter(i=>i.status==='resolved').length;
-    
-    document.getElementById('admin-stats-top').innerHTML = `
-      <div class="admin-stat-card"><p class="text-xs text-muted">Total Issues</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1;">${total}</h2><div class="icon-circle" style="background:var(--primary-light); color:var(--primary); width:30px; height:30px; font-size:0.9rem;">i</div></div></div>
-      <div class="admin-stat-card"><p class="text-xs text-muted">Pending Fixes</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1;">${pending}</h2><div class="icon-circle" style="background:var(--warning-bg); color:var(--warning); width:30px; height:30px; font-size:0.9rem;">🕒</div></div></div>
-      <div class="admin-stat-card"><p class="text-xs text-muted">Budget Delayed</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1; color:var(--danger);">${delayed}</h2><div class="icon-circle" style="background:var(--danger-bg); color:var(--danger); width:30px; height:30px; font-size:0.9rem;">⚠️</div></div></div>
-      <div class="admin-stat-card"><p class="text-xs text-muted">Resolved</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1;">${resolved}</h2><div class="icon-circle" style="background:var(--success-bg); color:var(--success); width:30px; height:30px; font-size:0.9rem;">✅</div></div></div>
-    `;
-    
-    const hpList = db.filter(i => i.priority === 'high' && i.status !== 'resolved');
-    document.getElementById('hp-count-badge').innerText = `${hpList.length} Active`;
-    
-    document.getElementById('admin-hp-list').innerHTML = hpList.map(i => `
-      <div class="hp-issue-item" onclick="openModal('${i.id}')">
-        <div>
-          <div class="font-semibold text-sm text-primary"><span style="color:var(--danger); margin-right:0.5rem;">!</span>${i.title}</div>
-          <div class="text-xs text-muted mt-1" style="margin-left: 1.2rem;">${i.budget.includes('Pending') ? '⚠️ Budget Hold' : '📍 ' + i.location}</div>
-        </div>
-        ${getBadgeHTML('status', i.status)}
-      </div>
-    `).join('');
-    
-    document.getElementById('admin-dept-progress').innerHTML = ['Public Works', 'Water Department', 'Electrical', 'Sanitation', 'Traffic'].map(d => {
-      const t = db.filter(i => i.dept === d).length; 
-      const r = db.filter(i => i.dept === d && i.status === 'resolved').length; 
-      const p = t === 0 ? 0 : (r/t)*100;
-      return `<div class="progress-wrapper"><div class="progress-info"><span>${d}</span><span>${r}/${t} resolved</span></div><div class="progress-track"><div class="progress-bar" style="width:${p}%;"></div></div></div>`;
-    }).join('');
-    
-    /* FIX: Button completely stripped of overlay interactions to guarantee it works */
-    document.getElementById('admin-table-body').innerHTML = db.map(i => `
-      <tr>
-        <td><span class="table-id">${i.id}</span></td>
-        <td class="font-medium">${i.title}</td>
-        <td>${i.budget.includes('Pending') ? `<span style="color:var(--danger); font-weight:600;">${i.budget}</span>` : i.budget}</td>
-        <td>${getBadgeHTML('status', i.status)}</td>
-        <td><button type="button" class="btn btn-outline text-xs" style="position:relative; z-index:20; cursor:pointer;" onclick="openModal('${i.id}'); event.stopPropagation();">View / Manage</button></td>
-      </tr>
-    `).join('');
-  }
-
-  /* --- ANALYTICS (CHART.JS) --- */
-  function renderAnalytics() {
-    const db = getDB(); 
-    const total = db.length || 1; 
-    const pen = db.filter(i => i.status === 'pending').length; 
-    const prog = db.filter(i => i.status === 'in progress').length; 
-    const res = db.filter(i => i.status === 'resolved').length; 
-    const hi = db.filter(i => i.priority === 'high').length; 
-    const med = db.filter(i => i.priority === 'medium').length; 
-    const low = db.filter(i => i.priority === 'low').length;
-
-    document.getElementById('an-rate').innerText = `${Math.round((res/total)*100)}%`; 
-    document.getElementById('an-hp').innerText = hi;
-    
-    if(charts.status) charts.status.destroy();
-    charts.status = new Chart(document.getElementById('chart-status'), {
-      type: 'doughnut',
-      data: { labels: ['Pending', 'In Progress', 'Resolved'], datasets: [{ data: [pen, prog, res], backgroundColor: ['#f59e0b', '#3b82f6', '#10b981'] }] },
-      options: { responsive: true, maintainAspectRatio: false }
-    });
-
-    if(charts.priority) charts.priority.destroy();
-    charts.priority = new Chart(document.getElementById('chart-priority'), {
-      type: 'pie',
-      data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [hi, med, low], backgroundColor: ['#ef4444', '#f59e0b', '#10b981'] }] },
-      options: { responsive: true, maintainAspectRatio: false }
-    });
-
-    const cats = ['Pothole', 'Water Leak', 'Electrical', 'Garbage', 'Drainage', 'Traffic'];
-    const catData = cats.map(c => db.filter(i => i.category === c).length);
-    
-    if(charts.categories) charts.categories.destroy();
-    charts.categories = new Chart(document.getElementById('chart-categories'), {
-      type: 'bar',
-      data: { labels: cats, datasets: [{ label: 'Number of Issues', data: catData, backgroundColor: '#3b82f6', borderRadius: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-    });
-  }
-
-  /* --- CHATBOT --- */
-  function toggleChat() { document.getElementById('chat-window').classList.toggle('hidden'); }
-  function quickReply(txt) { document.getElementById('chat-msg').value = txt; sendChat(); }
-  function sendChat() {
-    const input = document.getElementById('chat-msg'); 
-    const rawTxt = input.value; 
-    const text = rawTxt.toLowerCase().trim(); 
-    if(!text) return;
-    
-    const body = document.getElementById('chat-body');
-    body.innerHTML += `<div class="chat-msg msg-user">${rawTxt}</div>`; 
-    input.value = ''; 
+    body.innerHTML += `<div class="chat-msg msg-bot">${reply}</div>`; 
     body.scrollTop = body.scrollHeight;
-    
-    setTimeout(() => {
-      let reply = "I'm still learning! You can ask me about reporting issues, volunteering, budget delays, or how to earn civic points.";
-      
-      if(text.includes("report") || text.includes("new issue")) {
-        reply = "You can report an issue by heading to the 'Report Issue' tab. We use AI to automatically route your request to the correct department.";
-      } else if (text.includes("budget") || text.includes("delay") || text.includes("why")) {
-        reply = "Some issues take longer to fix due to municipal **Budget Constraints**. We maintain full transparency—check the 'Financial & Schedule Status' on any issue to see if it's funded or scheduled for the next budget cycle!";
-      } else if (text.includes("volunteer") || text.includes("community") || text.includes("adopt") || text.includes("ngo")) {
-        reply = "When city funds are tight, citizens can step up! Check out the 'NGO Hub' to view unfunded projects, or click on any pending issue and look for the purple **Volunteer / Adopt** button to offer your help.";
-      } else if (text.includes("temporary") || text.includes("safety") || text.includes("warning")) {
-        reply = "If an issue can't be fixed immediately, authorities can apply **Temporary Actions** (like placing warning signs). These are marked in yellow on the issue details page.";
-      } else if (text.includes("points") || text.includes("reward") || text.includes("metro")) {
-        reply = "You earn **10 Civic Points** for every verified report! Points can be redeemed for rewards like Free Metro Passes or Library Access in the 'Community & Points' tab.";
-      } else if (text.includes("report") && text.includes("admin") || text.includes("export") || text.includes("pdf")) {
-        reply = "Administrators can generate automated **Policy & Escalation Reports** in PDF format from the Dashboard to justify future funding needs.";
-      } else if (text.includes("map")) {
-        reply = "The 'Issue Map' tab gives you a real-time geographic overview of all city issues and digital advisories.";
-      }
-      
-      body.innerHTML += `<div class="chat-msg msg-bot">${reply}</div>`;
-      body.scrollTop = body.scrollHeight;
-    }, 800);
+  }, 600);
+}
+
+/* ==========================================================================
+   5. CORE UI & UTILITIES
+   ========================================================================== */
+function showToast(message, type = 'primary', icon = '🔔') {
+  const container = document.getElementById('toast-container');
+  if(!container) return;
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span class="toast-icon">${icon}</span> <span>${message}</span>`;
+  container.appendChild(toast);
+  
+  if(typeof gsap !== 'undefined') {
+    gsap.fromTo(toast, { x: 120, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "back.out(1.7)" });
+    setTimeout(() => { gsap.to(toast, { x: 120, opacity: 0, duration: 0.4, ease: "power2.in", onComplete: () => toast.remove() }); }, 4000);
+  } else {
+    toast.style.opacity = 1; toast.style.transform = "translateX(0)";
+    setTimeout(() => toast.remove(), 4000);
   }
+}
+
+async function dispatchEmail(userEmail, userName, actionTitle, actionDetails) {
+  try {
+    await emailjs.send("service_0952wxc", "template_tes0o8g", {
+      to_email: userEmail,
+      name: userName, 
+      user_name: userName, 
+      action_title: actionTitle, 
+      action_details: actionDetails 
+    });
+    console.log(`Email successfully dispatched to ${userEmail}`);
+  } catch (error) { 
+    console.error("Email Dispatch Failed:", error); 
+  }
+}
+
+function createHash() { return '0x' + Math.random().toString(16).slice(2, 10); }
+
+function createRipple(event) {
+  const button = event.currentTarget; const circle = document.createElement("span");
+  const d = Math.max(button.clientWidth, button.clientHeight);
+  circle.style.width = circle.style.height = `${d}px`;
+  circle.style.left = `${event.clientX - button.getBoundingClientRect().left - d/2}px`; circle.style.top = `${event.clientY - button.getBoundingClientRect().top - d/2}px`;
+  circle.classList.add("ripple"); const existing = button.getElementsByClassName("ripple")[0]; if(existing) existing.remove();
+  button.appendChild(circle);
+}
+
+function triggerHeroAnimation() {
+  const els = document.querySelectorAll('.reveal-text');
+  els.forEach(el => el.classList.remove('visible'));
+  setTimeout(() => els.forEach(el => el.classList.add('visible')), 100);
+}
+
+function triggerTypewriter() {
+  const el = document.getElementById('typewriter-text'); if(!el) return;
+  clearInterval(typeInterval); el.innerHTML = '<span id="tw-content"></span><span class="cursor-blink">&nbsp;</span>';
+  const contentEl = document.getElementById('tw-content'); const text = "A Smarter Way to Report,^Track, and Resolve Civic Issues."; let idx = 0;
+  typeInterval = setInterval(() => {
+    if(idx < text.length) { if(text.charAt(idx) === '^') contentEl.innerHTML += "<br>"; else contentEl.innerHTML += text.charAt(idx); idx++; } 
+    else { clearInterval(typeInterval); }
+  }, 50);
+}
+
+function toggleTheme() { document.body.classList.toggle('dark-theme'); }
+
+document.addEventListener('DOMContentLoaded', async () => { 
+  document.querySelectorAll('.ripple-element').forEach(btn => btn.addEventListener('click', createRipple)); 
+  if(document.getElementById('testimonial-track') && typeof gsap !== 'undefined') {
+      gsap.to('#testimonial-track', { x: "-50%", duration: 30, ease: "none", repeat: -1 });
+  }
+  
+  if (currentUser) {
+    applyLoginUI();
+    navigate(currentUser.role === 'citizen' ? 'track' : 'admin');
+  }
+  await runAutoEscalationEngine(); 
+});
+
+/* ==========================================================================
+   6. DB ABSTRACTIONS & POINTS LOGGING
+   ========================================================================== */
+async function getDB() {
+  if(!supabaseClient) return [];
+  const { data, error } = await supabaseClient.from('issues').select('*').order('created', { ascending: false });
+  if (error) { console.error("Supabase Fetch Error:", error); return []; }
+  return data;
+}
+
+async function updateDB(id, updates) {
+  if(!supabaseClient) return;
+  const { error } = await supabaseClient.from('issues').update(updates).eq('id', id);
+  if (error) console.error("Supabase Update Error:", error);
+}
+
+async function logAudit(action, details) {
+  if(!currentUser || !supabaseClient) return;
+  await supabaseClient.from('audit_logs').insert([{ user_email: currentUser.email, role: currentUser.role, action: action, details: details }]);
+}
+
+async function logPointsHistory(action, points) {
+  if(!currentUser || !supabaseClient) return;
+  await supabaseClient.from('points_history').insert([{ user_email: currentUser.email, action: action, points_change: points }]);
+  renderPointsHistory(); 
+}
+
+async function updateUserStats(pointsAdd, reportedAdd, volAdd, actionName) {
+  if(!currentUser || !supabaseClient) return;
+  currentUser.points += pointsAdd; currentUser.reported += reportedAdd; currentUser.volunteered += volAdd;
+  sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
+  await supabaseClient.from('app_users').update({ points: currentUser.points, reported: currentUser.reported, volunteered: currentUser.volunteered }).eq('id', currentUser.id);
+  
+  if(pointsAdd > 0) {
+    await logPointsHistory(actionName, pointsAdd);
+    showToast(`You earned ${pointsAdd} Civic Points!`, 'success', '⭐');
+    dispatchEmail(currentUser.email, currentUser.name, `Points Earned: ${actionName}`, `Congratulations! You just earned ${pointsAdd} Civic Points for: ${actionName}. Your total balance is now ${currentUser.points}.`);
+  } else if (pointsAdd < 0) {
+    await logPointsHistory(actionName, pointsAdd);
+    showToast(`Redeemed ${Math.abs(pointsAdd)} Civic Points!`, 'primary', '🎁');
+    dispatchEmail(currentUser.email, currentUser.name, `Reward Redeemed: ${actionName}`, `You have successfully used ${Math.abs(pointsAdd)} points to redeem: ${actionName}. Your remaining balance is ${currentUser.points}. Enjoy!`);
+  }
+  const pts = document.getElementById('pts-val'); if(pts) pts.innerText = currentUser.points;
+  const mPts = document.getElementById('manage-pts'); if(mPts) mPts.innerText = currentUser.points;
+}
+
+async function runAutoEscalationEngine() {
+  let db = await getDB();
+  let now = new Date();
+  
+  for (let i of db) {
+    if(i.status === 'resolved') continue;
+    let created = new Date(i.created);
+    let diffDays = Math.floor(Math.abs(now - created) / (1000 * 60 * 60 * 24));
+    let needsUpdate = false; let updates = {};
+
+    if (i.daysPending !== diffDays) { updates.daysPending = diffDays; needsUpdate = true; }
+
+    let newEscLevel = 0;
+    if(diffDays > 15 || i.upvotes > 50) newEscLevel = 3;
+    else if (diffDays > 7) newEscLevel = 2;
+    else if (diffDays > 3) newEscLevel = 1;
+
+    if (i.escalationLevel !== newEscLevel) {
+      updates.escalationLevel = newEscLevel;
+      let newTimelineEvent = '';
+      if(newEscLevel === 3) newTimelineEvent = 'Escalated to District Admin (Level 3)';
+      if(newEscLevel === 2) newTimelineEvent = 'Escalated to Municipal Head (Level 2)';
+      if(newEscLevel === 1) newTimelineEvent = 'Escalated to Ward Officer (Level 1)';
+      
+      if (newTimelineEvent && !i.timeline.find(t=>t.title.includes(newTimelineEvent))) {
+        updates.timeline = [...i.timeline, {title: newTimelineEvent, date: new Date().toISOString(), type:'escalated'}];
+      }
+      needsUpdate = true;
+    }
+    if(needsUpdate) await updateDB(i.id, updates);
+  }
+}
+
+/* ==========================================================================
+   7. STRICT AUTHENTICATION & EMAILJS OTP
+   ========================================================================== */
+function togglePassword(inputId) {
+  const input = document.getElementById(inputId);
+  if(input.type === "password") { input.type = "text"; } else { input.type = "password"; }
+}
+
+function switchAuthTab(type) {
+  document.getElementById('area-cit').classList.toggle('hidden', type !== 'citizen'); 
+  document.getElementById('form-adm').classList.toggle('hidden', type !== 'admin');
+  document.getElementById('form-gov').classList.toggle('hidden', type !== 'gov');
+  document.getElementById('form-super').classList.toggle('hidden', type !== 'super');
+  ['cit', 'adm', 'gov', 'super'].forEach(t => {
+    const btn = document.getElementById(`tab-${t}`);
+    if(btn) { if(t === type) { btn.style.borderBottomColor='var(--primary)'; btn.style.color='var(--primary)'; } else { btn.style.borderBottomColor='transparent'; btn.style.color='var(--text-secondary)'; } }
+  });
+}
+
+function toggleCitAuth(action) {
+  document.getElementById('form-cit-login').classList.toggle('hidden', action !== 'login'); 
+  document.getElementById('form-cit-register').classList.toggle('hidden', action !== 'register');
+  document.getElementById('btn-login-cit').classList.toggle('active', action === 'login'); 
+  document.getElementById('btn-reg-cit').classList.toggle('active', action === 'register');
+  document.getElementById('btn-login-cit').style.background = action === 'login' ? 'var(--bg-surface)' : 'transparent';
+  document.getElementById('btn-reg-cit').style.background = action === 'register' ? 'var(--bg-surface)' : 'transparent';
+}
+
+async function socialLogin(provider) {
+  if(!supabaseClient) return showToast("Database not connected.", "warning", "🚫");
+  showToast(`Redirecting to Google secure login...`, 'primary', '📱');
+  const { data, error } = await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+  if(error) alert("OAuth Error: " + error.message);
+}
+
+async function handleCitizenOTPFlow(e) {
+  e.preventDefault();
+  if(!supabaseClient) return showToast("Database not connected. Check keys.", "warning", "🚫");
+  
+  const identifier = document.getElementById('cit-login-identifier').value.trim();
+  pendingLoginEmail = identifier;
+  
+  let {data, error} = await supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail).eq('role', 'citizen');
+  if(error || data.length === 0) {
+    showToast("Email not found. Please register first.", "warning", "🚫");
+    return;
+  }
+
+  realGeneratedOTP = Math.floor(1000 + Math.random() * 9000).toString();
+  showToast(`Dispatching secure OTP via EmailJS...`, 'primary', '⏳');
+
+  try {
+    await emailjs.send("service_0952wxc", "template_tes0o8g", {
+      to_email: pendingLoginEmail,
+      name: data[0].name,
+      user_name: data[0].name,
+      action_title: "Your Secure Login OTP",
+      action_details: `Your 4-digit secure OTP for CiviSync is: ${realGeneratedOTP}. Do not share this with anyone.`
+    });
+    
+    console.log(`[TESTING] Your OTP is: ${realGeneratedOTP}`); 
+    showToast(`OTP successfully sent to your inbox!`, 'success', '📧');
+    document.getElementById('cit-login-step-1').classList.add('hidden');
+    document.getElementById('cit-login-step-2').classList.remove('hidden');
+  } catch (err) {
+    console.error("EmailJS Error details:", err);
+    let errorMsg = err.text || err.message || JSON.stringify(err);
+    alert("Failed to send OTP.\n\nError details: " + errorMsg + "\n\n(If you see ERR_CERT_AUTHORITY_INVALID, please pause your Web Antivirus for 5 minutes).");
+  }
+}
+
+function reEnterEmail() {
+  document.getElementById('cit-login-step-2').classList.add('hidden');
+  document.getElementById('cit-login-step-1').classList.remove('hidden');
+}
+
+function resendOTP() {
+  showToast('Resending OTP...', 'primary', '🔄');
+  document.getElementById('cit-login-step-1').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+}
+
+async function verifyCitizenOTP() {
+  const otpInput = document.getElementById('cit-login-otp').value;
+  if(otpInput !== realGeneratedOTP) return showToast("Incorrect OTP entered!", "warning", "❌");
+  
+  let {data, error} = await supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail).eq('role', 'citizen');
+  currentUser = data[0];
+  await logAudit('LOGIN', `Citizen logged in securely via Email OTP.`);
+  showToast('Secure Login Successful. Welcome back!', 'success', '✅');
+  finalizeLogin();
+}
+
+async function handleAuth(e, type) {
+  if(e) e.preventDefault(); 
+  if(!supabaseClient) return showToast("Database not connected. Check keys.", "warning", "🚫");
+  
+  let email, password, name;
+  
+  if(type === 'citizen_register') { 
+    name = document.querySelectorAll('#form-cit-register input')[0].value; 
+    email = document.querySelectorAll('#form-cit-register input')[1].value; 
+    password = document.querySelectorAll('#form-cit-register input')[2].value;
+    
+    let {data: exist} = await supabaseClient.from('app_users').select('email').eq('email', email);
+    if(exist && exist.length > 0) { showToast("Email already registered!", "warning", "⚠️"); return; }
+    
+    let {data: newUser, error} = await supabaseClient.from('app_users').insert([{ name, email, password, role: 'citizen', points: 150 }]).select();
+    if(error) return alert("Database connection error.");
+    
+    currentUser = newUser[0];
+    await logAudit('REGISTER', 'New citizen account created.');
+    dispatchEmail(email, name, "Welcome to CiviSync", "Your account has been successfully created. You have been awarded 150 starting points!");
+    showToast('Account Created! Welcome to CiviSync.', 'success', '🎉');
+    finalizeLogin();
+  } 
+  else {
+    let formId = type === 'citizen_pwd' ? 'form-cit-login' : `form-${type}`;
+    let inputs = document.getElementById(formId).querySelectorAll('input');
+    email = inputs[0].value; 
+    password = inputs[1].value; 
+    let checkRole = type === 'citizen_pwd' ? 'citizen' : type;
+    
+    let {data, error} = await supabaseClient.from('app_users').select('*').eq('email', email).eq('password', password).eq('role', checkRole);
+    if(error || data.length === 0) { showToast("Invalid Credentials or Unregistered User!", "warning", "🚫"); return; }
+    
+    currentUser = data[0];
+    await logAudit('LOGIN', `User successfully logged in as ${checkRole}.`);
+    showToast(`Logged in securely as ${currentUser.name}`, 'success', '✅');
+    finalizeLogin();
+  }
+}
+
+function openForgotPassword() { document.getElementById('forgot-modal').classList.add('open'); }
+function closeForgotModal() { document.getElementById('forgot-modal').classList.remove('open'); }
+
+async function requestPasswordReset(e) {
+  e.preventDefault();
+  if(!supabaseClient) return;
+  resetEmailMemory = document.getElementById('forgot-email').value;
+  let {data, error} = await supabaseClient.from('app_users').select('name').eq('email', resetEmailMemory);
+  if(error || data.length === 0) { showToast("Email not found in our system.", "warning", "⚠️"); return; }
+  
+  resetOTPMemory = Math.floor(1000 + Math.random() * 9000).toString();
+  dispatchEmail(resetEmailMemory, data[0].name, "Password Reset OTP", `You requested a password reset. Your secure 4-digit OTP is: ${resetOTPMemory}`);
+  
+  showToast("Reset OTP sent to your email!", "primary", "📧");
+  document.getElementById('forgot-step-1').classList.add('hidden');
+  document.getElementById('forgot-step-2').classList.remove('hidden');
+}
+
+async function verifyResetOTP(e) {
+  e.preventDefault();
+  if(!supabaseClient) return;
+  const enteredOTP = document.getElementById('forgot-otp').value;
+  const newPwd = document.getElementById('forgot-new-pwd').value;
+  if(enteredOTP !== resetOTPMemory) { showToast("Incorrect OTP.", "warning", "❌"); return; }
+  
+  await supabaseClient.from('app_users').update({ password: newPwd }).eq('email', resetEmailMemory);
+  showToast("Password Reset Successful! Please log in.", "success", "🔐");
+  closeForgotModal();
+  document.getElementById('forgot-step-1').classList.remove('hidden'); document.getElementById('forgot-step-2').classList.add('hidden');
+}
+
+function finalizeLogin() {
+  sessionStorage.setItem('civisync_user', JSON.stringify(currentUser)); 
+  applyLoginUI();
+  navigate(currentUser.role === 'citizen' ? 'track' : 'admin');
+}
+
+function applyLoginUI() {
+  document.getElementById('btn-auth').classList.add('hidden');
+  document.getElementById('user-menu-container').classList.remove('hidden');
+  document.getElementById('avatar-initials').innerText = currentUser.name.charAt(0).toUpperCase();
+  document.getElementById('drop-name').innerText = currentUser.name;
+  document.getElementById('drop-email').innerText = currentUser.email;
+
+  document.querySelectorAll('.auth-req').forEach(el => el.classList.remove('hidden'));
+
+  if(currentUser.role === 'citizen') { 
+    document.getElementById('user-points').classList.remove('hidden'); document.getElementById('pts-val').innerText = currentUser.points; 
+    ['nav-admin', 'nav-gov', 'nav-budget', 'nav-integrations', 'nav-superadmin'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+  } else if(currentUser.role === 'admin') { 
+    ['nav-points', 'nav-gov', 'nav-leaderboard', 'nav-ngo', 'nav-integrations', 'nav-superadmin', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+  } else if(currentUser.role === 'gov') {
+    ['nav-points', 'nav-admin', 'nav-leaderboard', 'nav-ngo', 'nav-superadmin', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    document.getElementById('gov-logged-role').innerText = currentUser.name;
+  } else if(currentUser.role === 'super') {
+    ['nav-points', 'nav-leaderboard', 'nav-ngo', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+  }
+}
+
+async function logout() { 
+  if(currentUser) await logAudit('LOGOUT', 'User securely logged out.');
+  sessionStorage.removeItem('civisync_user');
+  currentUser = null; location.reload(); 
+}
+
+/* ==========================================================================
+   8. NAVIGATION ROUTER
+   ========================================================================== */
+function updateLeaderboard() {
+  if(currentUser) {
+    const elUser = document.getElementById('lb-current-user'); const elIss = document.getElementById('lb-current-issues'); const elPts = document.getElementById('lb-current-points');
+    if(elUser) elUser.innerText = currentUser.name + " (You)"; if(elIss) elIss.innerText = currentUser.reported + currentUser.volunteered; if(elPts) elPts.innerText = currentUser.points;
+  }
+}
+
+async function reRenderAllActive() {
+  if(document.getElementById('view-track') && document.getElementById('view-track').classList.contains('active')) await renderTrack();
+  if(document.getElementById('view-admin') && document.getElementById('view-admin').classList.contains('active')) await renderAdmin();
+  if(document.getElementById('view-budget') && document.getElementById('view-budget').classList.contains('active')) await renderBudget();
+  if(document.getElementById('view-ngo') && document.getElementById('view-ngo').classList.contains('active')) await renderNgo();
+  if(document.getElementById('view-analytics') && document.getElementById('view-analytics').classList.contains('active')) await renderAnalytics();
+  if(document.getElementById('view-leaderboard') && document.getElementById('view-leaderboard').classList.contains('active')) updateLeaderboard();
+  if(document.getElementById('view-gov') && document.getElementById('view-gov').classList.contains('active')) await renderGov();
+  if(document.getElementById('view-transparency') && document.getElementById('view-transparency').classList.contains('active')) await renderTransparency();
+  if(document.getElementById('view-superadmin') && document.getElementById('view-superadmin').classList.contains('active')) await renderSuperAdmin();
+  if(document.getElementById('view-points') && document.getElementById('view-points').classList.contains('active')) await renderPointsHistory();
+}
+
+async function navigate(viewId) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const targetView = document.getElementById(`view-${viewId}`); if(targetView) targetView.classList.add('active');
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  const navLink = document.getElementById(`nav-${viewId}`); if(navLink) navLink.classList.add('active');
+
+  if(viewId === 'landing') { triggerHeroAnimation(); triggerTypewriter(); }
+  if(viewId === 'track') await renderTrack();
+  if(viewId === 'map') await initDedicatedMap();
+  if(viewId === 'gov') await renderGov();
+  if(viewId === 'transparency') await renderTransparency();
+  if(viewId === 'admin') await renderAdmin();
+  if(viewId === 'analytics') await renderAnalytics();
+  if(viewId === 'ngo') await renderNgo();
+  if(viewId === 'budget') await renderBudget();
+  if(viewId === 'superadmin') await renderSuperAdmin();
+  if(viewId === 'leaderboard') updateLeaderboard();
+  if(viewId === 'points') await renderPointsHistory();
+
+  if(viewId === 'profile' && currentUser) {
+    document.getElementById('prof-name').innerText = currentUser.name; document.getElementById('prof-email').innerText = currentUser.email; document.getElementById('prof-avatar').innerText = currentUser.name.charAt(0).toUpperCase(); document.getElementById('prof-pts').innerText = currentUser.points; document.getElementById('prof-reported').innerText = currentUser.reported; document.getElementById('prof-vol').innerText = currentUser.volunteered; document.getElementById('prof-role-badge').innerText = currentUser.role.toUpperCase();
+    if(currentUser.points >= 500) { const bc = document.getElementById('badge-container'); if(bc) bc.classList.remove('hidden'); }
+  }
+  window.scrollTo(0,0);
+}
+
+function checkAuthAndGo(viewId) { 
+  if(!currentUser || currentUser.role !== 'citizen') { showToast("Please log in to access this feature.", "warning", "🔒"); navigate('auth'); switchAuthTab('citizen'); } else { navigate(viewId); }
+}
+
+/* ==========================================================================
+   9. 3-STEP ANIMATED REPORT ISSUES
+   ========================================================================== */
+function nextReportStep(targetStep) {
+  document.querySelectorAll('.form-step').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+
+  const targetForm = document.getElementById(`form-step-${targetStep}`);
+  targetForm.classList.remove('hidden');
+  document.getElementById(`step-${targetStep}-ind`).classList.add('active');
+
+  if(typeof gsap !== 'undefined') gsap.fromTo(targetForm, { x: 50, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" });
+}
+
+function getLocationWithAnim() {
+  const btn = document.getElementById('btn-gps');
+  btn.innerHTML = "⏳ Scanning Satellites...";
+  if(typeof gsap !== 'undefined') gsap.to(btn, { scale: 0.95, duration: 0.3, yoyo: true, repeat: -1 });
+  
+  if(navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => { 
+      const loc = document.getElementById('repLoc'); 
+      loc.value = `Lat: ${pos.coords.latitude.toFixed(4)} | Lng: ${pos.coords.longitude.toFixed(4)}`; 
+      if(typeof gsap !== 'undefined') gsap.killTweensOf(btn);
+      btn.style.transform = "scale(1)"; btn.innerHTML = "✅ Locked"; btn.style.background = "var(--success)"; btn.style.borderColor = "var(--success)";
+    }, () => { if(typeof gsap !== 'undefined') gsap.killTweensOf(btn); btn.innerHTML = "❌ Failed"; }); 
+  }
+}
+
+function handleImageUpload(e) { 
+  const file = e.target.files[0];
+  if(file) {
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+        const MAX_WIDTH = 600; const scaleSize = MAX_WIDTH / img.width;
+        canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        currentFileBase64 = canvas.toDataURL('image/jpeg', 0.5);
+        document.getElementById('uploadStatus').innerText="✓ Image compressed and ready";
+      }
+      img.src = event.target.result;
+    }
+    reader.readAsDataURL(file);
+  }
+}
+
+function startDictation() {
+  if(window.webkitSpeechRecognition) {
+    const rec = new window.webkitSpeechRecognition(); rec.start(); 
+    const b = document.getElementById('btnMic'); if(b) b.classList.add('recording');
+    rec.onresult = e => { const desc = document.getElementById('repDesc'); if(desc) desc.value += e.results[0][0].transcript; triggerAICategorization(); if(b) b.classList.remove('recording'); };
+    rec.onerror = () => { alert("Speech recognition failed."); if(b) b.classList.remove('recording'); };
+  }
+}
+
+function triggerAICategorization() {
+  const descEl = document.getElementById('repDesc'); const s = document.getElementById('repCat'); const tag = document.getElementById('aiTag');
+  if(!descEl || !s || !tag) return;
+  const t = descEl.value.toLowerCase(); let found = false;
+  if(t.includes('pothole') || t.includes('road')) { s.value='Pothole'; found = true; } 
+  else if(t.includes('water') || t.includes('leak') || t.includes('pipe')) { s.value='Water Leak'; found = true; } 
+  else if(t.includes('drain') || t.includes('school')) { s.value='Drainage'; found = true; }
+  else if(t.includes('light') || t.includes('dark')) { s.value='Electrical'; found = true; }
+  if(found) { tag.style.display='inline-block'; setTimeout(()=>tag.style.display='none', 3000); }
+}
+
+async function submitReport(e) {
+  e.preventDefault();
+  if(!supabaseClient) return alert("Database not connected.");
+  const cat = document.getElementById('repCat').value; const desc = document.getElementById('repDesc').value.toLowerCase();
+  const routing = {'Pothole':'Public Works', 'Water Leak':'Water Department', 'Electrical':'Electrical', 'Garbage':'Sanitation', 'Drainage':'Public Works', 'Traffic':'Traffic'};
+  
+  let calcPrio = 'medium';
+  if(cat === 'Drainage' || desc.includes('school') || desc.includes('critical') || desc.includes('danger')) calcPrio = 'high'; 
+  if(cat === 'Water Leak') calcPrio = 'high';
+
+  const newId = `ISS00${Math.floor(Math.random()*900)+100}`;
+  const issue = { 
+    id: newId, title: document.getElementById('repTitle').value, category: cat, desc: document.getElementById('repDesc').value, location: document.getElementById('repLoc').value, priority: calcPrio, status: 'pending', created: new Date().toISOString(), daysPending: 0, escalationLevel: 0, upvotes: 0, dept: routing[cat] || 'General', img: currentFileBase64, lat: 31.63 + (Math.random()*0.02 - 0.01), lng: 74.87 + (Math.random()*0.02 - 0.01), budget: 'Pending Budget Constraint', tempAction: '', volunteers: 0, schedule: 'Awaiting Assessment', history: [{stat:'pending | Pending Budget Constraint', date:new Date().toISOString(), hash:createHash()}], timeline: [{title: 'Complaint Submitted', date: new Date().toISOString(), type:'active'}], isOverdue: false
+  };
+  
+  try {
+    if(!navigator.onLine) {
+      let q = JSON.parse(localStorage.getItem('civisync_offline_queue') || '[]'); q.push(issue); localStorage.setItem('civisync_offline_queue', JSON.stringify(q));
+      showToast("Saved offline. Will sync when connected.", 'warning', '📡');
+    } else { 
+      const { error } = await supabaseClient.from('issues').insert([issue]);
+      if(error) throw error;
+      await logAudit('REPORT_CREATED', `Created issue ${newId}.`);
+    }
+
+    await updateUserStats(10, 1, 0, 'Reported a Civic Issue'); 
+    dispatchEmail(currentUser.email, currentUser.name, "Issue Report Confirmation", `Your issue "${issue.title}" has been successfully logged. Tracking ID: ${issue.id}. You earned 10 Points!`);
+    
+    e.target.reset(); currentFileBase64 = 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'; 
+    const stat = document.getElementById('uploadStatus'); if(stat) stat.innerText = '';
+    
+    showToast(`Report published! AI Assigned Priority: ${calcPrio.toUpperCase()}`, 'success', '🚀');
+    nextReportStep(1); 
+    await runAutoEscalationEngine(); navigate('track');
+  } catch (err) {
+    console.error(err);
+    showToast('Failed to save report. Try again.', 'warning', '⚠️');
+  }
+}
+
+/* ==========================================================================
+   10. TRACK ISSUES & MODALS
+   ========================================================================== */
+async function setTrackTab(tab, el) { trackTabActive = tab; document.querySelectorAll('.tab-pill').forEach(t=>t.classList.remove('active')); el.classList.add('active'); await renderTrack(); }
+
+function switchTrackView(v) {
+  const isL = v === 'list'; 
+  const contL = document.getElementById('track-list-container'); const contM = document.getElementById('track-map-container');
+  if(contL) contL.classList.toggle('hidden',!isL); if(contM) contM.classList.toggle('hidden',isL);
+  const btnL = document.getElementById('btn-list-view'); const btnM = document.getElementById('btn-map-view');
+  if(btnL && btnM) {
+    if(isL) { btnL.style.background = 'var(--bg-app)'; btnL.style.color = 'var(--primary)'; btnL.style.fontWeight = '600'; btnM.style.background = 'transparent'; btnM.style.color = 'var(--text-secondary)'; btnM.style.fontWeight = '500'; } 
+    else { btnM.style.background = 'var(--bg-app)'; btnM.style.color = 'var(--primary)'; btnM.style.fontWeight = '600'; btnL.style.background = 'transparent'; btnL.style.color = 'var(--text-secondary)'; btnL.style.fontWeight = '500'; initMap(); }
+  }
+}
+
+function getBadgeHTML(t, v) { if(t === 'status') return `<span class="badge badge-${v.replace(' ','-')} status-badge">${v.toUpperCase()}</span>`; return `<span class="badge badge-${v}">${v}</span>`; }
+
+async function renderTrack() {
+  let db = await getDB();
+  const elAll = document.getElementById('cnt-all'); if(elAll) elAll.innerText = db.length; 
+  const elPen = document.getElementById('cnt-pen'); if(elPen) elPen.innerText = db.filter(i=>i.status==='pending').length; 
+  const elProg = document.getElementById('cnt-prog'); if(elProg) elProg.innerText = db.filter(i=>i.status==='in progress').length; 
+  const elRes = document.getElementById('cnt-res'); if(elRes) elRes.innerText = db.filter(i=>i.status==='resolved').length;
+  
+  const searchEl = document.getElementById('trackSearch'); const catEl = document.getElementById('trackCatFilter');
+  let search = ''; let cat = '';
+  if(searchEl) search = searchEl.value.toLowerCase(); if(catEl) cat = catEl.value;
+
+  if(search) db = db.filter(i => i.title.toLowerCase().includes(search) || i.desc.toLowerCase().includes(search));
+  if(cat) db = db.filter(i => i.category === cat);
+  if(trackTabActive !== 'All') db = db.filter(i => i.status === trackTabActive);
+  
+  const cont = document.getElementById('track-list-container'); if(!cont) return;
+  if(db.length === 0) { cont.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align:center; padding: 2rem;">No issues found matching your filters.</p>'; return; }
+  
+  cont.innerHTML = db.map(i => `
+    <div class="issue-card-clean" onclick="openModal('${i.id}')">
+      <div class="issue-img-wrapper">${getBadgeHTML('status', i.status)}<img src="${i.img}" onerror="this.src='https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'"></div>
+      <div class="issue-card-content">
+        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><span class="text-xs text-muted font-monospace">${i.id}</span>${getBadgeHTML('priority', i.priority)}</div>
+        <h3 style="font-size:1.05rem; margin-bottom:0.5rem;">${i.title}</h3>
+        ${i.budget.includes('Pending') ? `<span style="font-size:0.75rem; color:#b45309; background:#fef3c7; padding:2px 6px; border-radius:4px; margin-bottom:10px; display:inline-block;">⚠️ Budget Delayed</span>` : ''}
+        ${i.status === 'pending' ? `<p class="text-xs text-danger font-medium mb-2">Pending: ${i.daysPending} days ${i.escalationLevel > 0 ? `(Escalated L${i.escalationLevel})` : ''}</p>` : ''}
+        <div style="display:flex; justify-content:space-between; border-top:1px solid var(--border); padding-top:0.75rem; margin-top:auto;"><span class="badge badge-outline">${i.category}</span><span class="text-xs text-primary font-medium">⬆ ${i.upvotes} Upvotes</span></div>
+      </div>
+    </div>`).join('');
+}
+
+async function initMap() { 
+  const mapEl = document.getElementById('leaflet-map'); if(!mapEl) return;
+  if(!mapInstance){ mapInstance = L.map('leaflet-map').setView([31.634, 74.872], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance); }
+  mapInstance.eachLayer(l => { if(l instanceof L.Marker) mapInstance.removeLayer(l); });
+  
+  let db = await getDB();
+  db.forEach(i => {
+    if(i.lat && i.lng) {
+      const color = i.priority==='high' ? '#ef4444' : (i.priority==='medium' ? '#f59e0b' : '#10b981');
+      const icon = L.divIcon({className: 'custom-icon', html: `<div style="background:${color}; width:16px; height:16px; border-radius:50%; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.4);"></div>`});
+      L.marker([i.lat, i.lng], {icon}).addTo(mapInstance).bindPopup(`<b>${i.id}</b><br>${i.category}<br><button class="btn btn-outline text-xs" style="margin-top:5px;" onclick="openModal('${i.id}')">View Details</button>`);
+    }
+  });
+  setTimeout(() => mapInstance.invalidateSize(), 100);
+}
+
+async function initDedicatedMap() { 
+  const mapEl = document.getElementById('dedicated-map'); if(!mapEl) return;
+  if(!dedicatedMapInstance){ dedicatedMapInstance = L.map('dedicated-map').setView([31.634, 74.872], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dedicatedMapInstance); }
+  
+  dedicatedMapInstance.eachLayer(l => { if(l instanceof L.Marker) dedicatedMapInstance.removeLayer(l); });
+  truckTweens.forEach(t => t.kill()); truckTweens = [];
+
+  let db = await getDB();
+  db.forEach(i => {
+    if(!i.lat) return;
+    const color = i.priority==='high' ? '#ef4444' : (i.priority==='medium' ? '#f59e0b' : '#10b981');
+    const icon = L.divIcon({className: 'custom-icon', html: `<div style="background:${color}; width:16px; height:16px; border-radius:50%; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.4);"></div>`});
+    L.marker([i.lat, i.lng], {icon}).addTo(dedicatedMapInstance).bindPopup(`<b>${i.title}</b><br><button class="btn btn-outline text-xs" onclick="openModal('${i.id}')">View</button>`);
+
+    if(i.status === 'in progress') {
+      let startLat = i.lat - 0.015; let startLng = i.lng - 0.015; 
+      let tIcon = L.divIcon({className: 'truck-icon', html: '🚚'});
+      let tMarker = L.marker([startLat, startLng], {icon: tIcon}).addTo(dedicatedMapInstance);
+      let pos = {lat: startLat, lng: startLng};
+      let tween = gsap.to(pos, { lat: i.lat, lng: i.lng, duration: 10 + Math.random()*5, ease: "none", repeat: -1, onUpdate: () => tMarker.setLatLng([pos.lat, pos.lng]) });
+      truckTweens.push(tween);
+    }
+  });
+  setTimeout(() => dedicatedMapInstance.invalidateSize(), 100);
+}
+
+async function openModal(id) {
+  activeModalIssueId = id; let db = await getDB(); const iss = db.find(i => i.id === id); if(!iss) return;
+  
+  const mTitle = document.getElementById('mod-title'); if(mTitle) mTitle.innerText = iss.title; 
+  const mId = document.getElementById('mod-id'); if(mId) mId.innerText = iss.id; 
+  const mTime = document.getElementById('mod-time'); if(mTime) mTime.innerText = new Date(iss.created).toLocaleDateString(); 
+  const mCat = document.getElementById('mod-cat'); if(mCat) mCat.innerText = iss.category; 
+  const mPrio = document.getElementById('mod-prio'); if(mPrio) mPrio.innerHTML = getBadgeHTML('priority', iss.priority); 
+  const mStat = document.getElementById('mod-stat'); if(mStat) mStat.innerHTML = getBadgeHTML('status', iss.status);
+  
+  const modImg = document.getElementById('mod-img'); if(modImg) { modImg.src = iss.img; modImg.onerror = function() { this.src = 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'; }; }
+  const mDesc = document.getElementById('mod-desc'); if(mDesc) mDesc.innerText = iss.desc;
+  
+  let budgCol = iss.budget.includes('Funded') ? 'var(--success)' : (iss.budget.includes('Pending') ? 'var(--danger)' : 'var(--warning)');
+  const mBud = document.getElementById('mod-budget-badge'); if(mBud) mBud.innerHTML = `<span style="background:transparent; border:1px solid ${budgCol}; color:${budgCol}; padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">${iss.budget}</span>`;
+  const mSched = document.getElementById('mod-schedule'); if(mSched) mSched.innerText = "📅 Schedule: " + iss.schedule;
+  
+  const tempSec = document.getElementById('mod-temp-sec');
+  if(tempSec) { if(iss.tempAction) { tempSec.innerHTML = `<div class="temp-action-banner"><span>${iss.tempAction}</span></div>`; } else { tempSec.innerHTML = ''; } }
+  
+  const mVol = document.getElementById('mod-vol-count'); if(mVol) mVol.innerText = iss.volunteers; 
+  const mDept = document.getElementById('mod-dept'); if(mDept) mDept.innerText = iss.dept; 
+  const mUpv = document.getElementById('mod-upv-cnt'); if(mUpv) mUpv.innerText = iss.upvotes;
+
+  const mTimeLine = document.getElementById('mod-timeline');
+  if(mTimeLine) {
+    mTimeLine.innerHTML = iss.timeline.map((t, index) => {
+      let liveClass = (index === iss.timeline.length - 1) ? 'live' : '';
+      return `<div class="timeline-item ${t.type} ${liveClass}"><strong>${t.title}</strong><span class="timeline-date">${new Date(t.date).toLocaleDateString()}</span></div>`;
+    }).join('');
+  }
+
+  const citArea = document.getElementById('cit-action-area'); const btnEsc = document.getElementById('btn-escalate'); const btnRti = document.getElementById('btn-rti');
+  if(citArea) citArea.classList.add('hidden'); if(btnEsc) btnEsc.classList.add('hidden'); if(btnRti) btnRti.classList.add('hidden');
+  
+  if(currentUser && currentUser.role === 'citizen') {
+    if(citArea) citArea.classList.remove('hidden');
+    if(iss.daysPending >= 7 || iss.upvotes >= 10) if(btnEsc) btnEsc.classList.remove('hidden');
+    if(iss.daysPending >= 30) if(btnRti) btnRti.classList.remove('hidden');
+  }
+
+  const admArea = document.getElementById('admin-update-area');
+  if(admArea) admArea.classList.toggle('hidden', !currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'gov' && currentUser.role !== 'super'));
+  if(currentUser && (currentUser.role === 'admin' || currentUser.role === 'gov' || currentUser.role === 'super')) {
+    const sStat = document.getElementById('admin-sel-stat'); if(sStat) sStat.value = iss.status;
+    const sBud = document.getElementById('admin-sel-budget');
+    if(sBud) { let matchingOption = Array.from(sBud.options).find(opt => opt.value === iss.budget); if(matchingOption) sBud.value = iss.budget; }
+  }
+  
+  const mOverlay = document.getElementById('modal'); if(mOverlay) mOverlay.classList.add('open');
+}
+
+function closeModal() { const mOverlay = document.getElementById('modal'); if(mOverlay) mOverlay.classList.remove('open'); activeModalIssueId = null; }
+
+function openNGOForm() {
+  if(!currentUser || currentUser.role !== 'citizen') return showToast("Please login to volunteer or adopt.", "warning", "🔒");
+  document.getElementById('ngo-modal').classList.add('open');
+}
+function closeNGOForm() { document.getElementById('ngo-modal').classList.remove('open'); }
+
+async function submitNGOForm(e) {
+  e.preventDefault();
+  closeNGOForm();
+  showToast(`Sending Proposal to Municipal Authority...`, 'primary', '⏳');
+  
+  setTimeout(async () => {
+    let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId); 
+    await updateDB(activeModalIssueId, { volunteers: iss.volunteers + 5 });
+    await updateUserStats(50, 0, 1, `Adopted Issue ${activeModalIssueId}`);
+    await logAudit('NGO_PLEDGE', `Pledged support for Issue ${activeModalIssueId}.`);
+    
+    dispatchEmail(currentUser.email, currentUser.name, "NGO Proposal Sent", `Your proposal to adopt Issue ${activeModalIssueId} has been sent to the authorities. You earned 50 Points!`);
+    showToast(`Success! Proposal Email delivered to Authorities.`, 'success', '📧');
+    const volEl = document.getElementById('mod-vol-count'); if(volEl) volEl.innerText = iss.volunteers + 5;
+    await reRenderAllActive();
+  }, 2000);
+}
+
+async function upvoteIssue() {
+  if(!currentUser || currentUser.role !== 'citizen') return showToast("Citizen login required.", "warning", "🔒");
+  let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
+  await updateDB(activeModalIssueId, { upvotes: iss.upvotes + 1 });
+  await logAudit('UPVOTE', `Upvoted Issue ${activeModalIssueId}.`);
+  const upv = document.getElementById('mod-upv-cnt'); if(upv) upv.innerText = iss.upvotes + 1; 
+  showToast("Upvote recorded!", "success", "⬆️");
+  await runAutoEscalationEngine(); await reRenderAllActive();
+}
+
+async function manualEscalate() {
+  let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
+  let newTimeline = [...iss.timeline, {title: 'Citizen Triggered Manual Escalation', date: new Date().toISOString(), type:'escalated'}];
+  await updateDB(activeModalIssueId, { timeline: newTimeline, escalationLevel: Math.max(iss.escalationLevel, 1) });
+  await logAudit('ESCALATE_MANUAL', `Manually escalated Issue ${activeModalIssueId}.`);
+  dispatchEmail(currentUser.email, currentUser.name, "Escalation Request Received", `Your request to escalate Issue ${activeModalIssueId} has been sent to the Ward Officer.`);
+  showToast('Escalation Request emailed to Ward Officer.', 'success', '📧');
+  closeModal(); await runAutoEscalationEngine(); await renderTrack();
+}
+
+async function adminSaveStatus() {
+  const sStat = document.getElementById('admin-sel-stat'); const sBud = document.getElementById('admin-sel-budget');
+  if(!sStat) return;
+  const s = sStat.value; const b = sBud ? sBud.value : 'Funded';
+  let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
+  let newTimeline = [...iss.timeline, {title: `Status updated to: ${s.toUpperCase()}`, date: new Date().toISOString(), type:'active'}];
+  await updateDB(activeModalIssueId, { status: s, budget: b, timeline: newTimeline });
+  await logAudit('STATUS_CHANGE', `Changed Issue ${activeModalIssueId} status to ${s}.`);
+  showToast(`Updates successfully saved. Notifications dispatched.`, 'success', '✅');
+  closeModal(); await reRenderAllActive();
+}
+
+/* ==========================================================================
+   11. ADMIN DASHBOARD & PDF GENERATION
+   ========================================================================== */
+function generatePDFReport() {
+  const element = document.getElementById('pdf-content'); const tbody = document.getElementById('pdf-table-body');
+  if(!element || !tbody) return;
+  element.classList.remove('hidden');
+  const opt = { margin: 0.5, filename: 'CiviSync-Report.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
+  html2pdf().set(opt).from(element).save().then(() => { element.classList.add('hidden'); });
+}
+
+async function generateDigitalNotice(id) {
+  const db = await getDB(); const iss = db.find(i => i.id === id);
+  document.getElementById('notice-date').innerText = new Date().toLocaleDateString(); document.getElementById('notice-dept').innerText = iss.dept; document.getElementById('notice-id').innerText = iss.id; document.getElementById('notice-title').innerText = iss.title;
+  const el = document.getElementById('notice-pdf-content'); if(!el) return;
+  el.classList.remove('hidden'); html2pdf().set({filename: `Showcause_${id}.pdf`}).from(el).save().then(() => { el.classList.add('hidden'); showToast('PDF Notice generated and emailed to department.', 'success', '📧'); });
+}
+
+async function generateRTIDraft() {
+  const db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
+  document.getElementById('rti-date').innerText = new Date().toLocaleDateString(); document.getElementById('rti-id').innerText = iss.id; document.getElementById('rti-title').innerText = iss.title;
+  const el = document.getElementById('rti-pdf-content'); if(!el) return;
+  el.classList.remove('hidden'); html2pdf().set({filename: `RTI_Draft_${iss.id}.pdf`}).from(el).save().then(() => el.classList.add('hidden'));
+}
+
+async function renderAdmin() {
+  const db = await getDB(); const total = db.length; const pending = db.filter(i=>i.status==='pending').length; const delayed = db.filter(i=>i.budget.includes('Pending') && i.status !== 'resolved').length; const resolved = db.filter(i=>i.status==='resolved').length;
+  const topStats = document.getElementById('admin-stats-top');
+  if(topStats) topStats.innerHTML = `<div class="admin-stat-card"><p class="text-xs text-muted">Total Issues</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1;">${total}</h2><div class="icon-circle" style="background:var(--primary-light); color:var(--primary); width:30px; height:30px; font-size:0.9rem;">i</div></div></div><div class="admin-stat-card"><p class="text-xs text-muted">Pending Fixes</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1;">${pending}</h2><div class="icon-circle" style="background:var(--warning-bg); color:var(--warning); width:30px; height:30px; font-size:0.9rem;">🕒</div></div></div><div class="admin-stat-card"><p class="text-xs text-muted">Budget Delayed</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1; color:var(--danger);">${delayed}</h2><div class="icon-circle" style="background:var(--danger-bg); color:var(--danger); width:30px; height:30px; font-size:0.9rem;">⚠️</div></div></div><div class="admin-stat-card"><p class="text-xs text-muted">Resolved</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1;">${resolved}</h2><div class="icon-circle" style="background:var(--success-bg); color:var(--success); width:30px; height:30px; font-size:0.9rem;">✅</div></div></div>`;
+  const hpList = db.filter(i => i.priority === 'high' && i.status !== 'resolved'); 
+  const hpBdg = document.getElementById('hp-count-badge'); if(hpBdg) hpBdg.innerText = `${hpList.length} Active`;
+  const aHpList = document.getElementById('admin-hp-list');
+  if(aHpList) aHpList.innerHTML = hpList.map(i => `<div class="hp-issue-item" onclick="openModal('${i.id}')"><div><div class="font-semibold text-sm text-primary"><span style="color:var(--danger); margin-right:0.5rem;">!</span>${i.title}</div><div class="text-xs text-muted mt-1" style="margin-left: 1.2rem;">${i.budget.includes('Pending') ? '⚠️ Budget Hold' : '📍 ' + i.location}</div></div>${getBadgeHTML('status', i.status)}</div>`).join('');
+  
+  const admProg = document.getElementById('admin-dept-progress');
+  if(admProg) admProg.innerHTML = ['Public Works', 'Water Department', 'Electrical', 'Sanitation', 'Traffic'].map(d => { const t = db.filter(i => i.dept === d).length; const r = db.filter(i => i.dept === d && i.status === 'resolved').length; const p = t === 0 ? 0 : (r/t)*100; return `<div class="progress-wrapper"><div class="progress-info"><span>${d}</span><span>${r}/${t} resolved</span></div><div class="progress-track"><div class="progress-bar" style="width:${p}%;"></div></div></div>`; }).join('');
+  
+  const admTab = document.getElementById('admin-table-body');
+  if(admTab) admTab.innerHTML = db.map(i => `<tr><td><span class="table-id">${i.id}</span></td><td class="font-medium">${i.title}</td><td>${i.budget.includes('Pending') ? `<span style="color:var(--danger); font-weight:600;">${i.budget}</span>` : i.budget}</td><td>${getBadgeHTML('status', i.status)}</td><td><button type="button" class="btn btn-outline text-xs" style="position:relative; z-index:20; cursor:pointer;" onclick="openModal('${i.id}'); event.stopPropagation();">View / Manage</button></td></tr>`).join('');
+}
+
+/* ==========================================================================
+   12. EXPANDED ANALYTICS CHARTS 
+   ========================================================================== */
+async function renderAnalytics() {
+  const db = await getDB(); const total = db.length || 1; const pen = db.filter(i => i.status === 'pending').length; const prog = db.filter(i => i.status === 'in progress').length; const res = db.filter(i => i.status === 'resolved').length; const hi = db.filter(i => i.priority === 'high').length; const med = db.filter(i => i.priority === 'medium').length; const low = db.filter(i => i.priority === 'low').length;
+  
+  const aRate = document.getElementById('an-rate'); if(aRate) aRate.innerText = `${Math.round((res/total)*100)}%`; 
+  const aHp = document.getElementById('an-hp'); if(aHp) aHp.innerText = hi;
+  
+  const chStat = document.getElementById('chart-status');
+  if(chStat) { if(charts.status) charts.status.destroy(); charts.status = new Chart(chStat, { type: 'doughnut', data: { labels: ['Pending', 'In Progress', 'Resolved'], datasets: [{ data: [pen, prog, res], backgroundColor: ['#f59e0b', '#3b82f6', '#10b981'] }] }, options: { responsive: true, maintainAspectRatio: false } }); }
+
+  const chPrio = document.getElementById('chart-priority');
+  if(chPrio) { if(charts.priority) charts.priority.destroy(); charts.priority = new Chart(chPrio, { type: 'pie', data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [hi, med, low], backgroundColor: ['#ef4444', '#f59e0b', '#10b981'] }] }, options: { responsive: true, maintainAspectRatio: false } }); }
+
+  const cats = ['Pothole', 'Water Leak', 'Electrical', 'Garbage', 'Drainage', 'Traffic']; const catData = cats.map(c => db.filter(i => i.category === c).length);
+  const chCat = document.getElementById('chart-categories');
+  if(chCat) { if(charts.categories) charts.categories.destroy(); charts.categories = new Chart(chCat, { type: 'bar', data: { labels: cats, datasets: [{ label: 'Number of Issues', data: catData, backgroundColor: '#3b82f6', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } }); }
+
+  const chTrend = document.getElementById('chart-trend');
+  if(chTrend) {
+    if(charts.trend) charts.trend.destroy();
+    charts.trend = new Chart(chTrend, { type: 'line', data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [{ label: 'Issues Resolved', data: [12, 19, 15, 25, 22, 30, res], borderColor: '#10b981', tension: 0.4, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.1)' }] }, options: { responsive: true, maintainAspectRatio: false } });
+  }
+}
+
+/* ==========================================================================
+   13. MISSING RENDER FUNCTIONS (NGO, BUDGET, GOVT, POINTS, ETC.)
+   ========================================================================== */
+async function renderPointsHistory() {
+  const list = document.getElementById('points-history-list');
+  if(!list || !currentUser || !supabaseClient) return;
+  const { data, error } = await supabaseClient.from('points_history').select('*').eq('user_email', currentUser.email).order('created_at', {ascending: false});
+  if(error || !data || data.length === 0) { list.innerHTML = '<p class="text-muted">No points history yet.</p>'; return; }
+  
+  list.innerHTML = data.map(d => `
+    <div style="display:flex; justify-content:space-between; padding: 10px; background:var(--bg-surface); border:1px solid var(--border); border-radius:4px;">
+      <div><strong>${d.action}</strong><br><span class="text-xs text-muted">${new Date(d.created_at).toLocaleDateString()}</span></div>
+      <strong style="color:${d.points_change > 0 ? 'var(--success)' : 'var(--danger)'};">${d.points_change > 0 ? '+' : ''}${d.points_change} pts</strong>
+    </div>
+  `).join('');
+  const mPts = document.getElementById('manage-pts'); if(mPts) mPts.innerText = currentUser.points;
+}
+
+async function redeemReward(cost, rewardName) {
+  if(!currentUser || currentUser.points < cost) return showToast("Not enough points!", "warning", "⚠️");
+  await updateUserStats(-cost, 0, 0, rewardName);
+  await renderPointsHistory();
+}
+
+async function renderNgo() {
+  let db = await getDB(); const unfunded = db.filter(i => i.budget.includes('Pending') && i.status !== 'resolved'); 
+  const cont = document.getElementById('ngo-issue-list'); if(!cont) return;
+  if(unfunded.length === 0) { cont.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align:center;">No unfunded issues right now!</p>'; return; }
+  cont.innerHTML = unfunded.map(i => `
+    <div class="issue-card-clean" style="border-color: var(--purple);">
+      <div class="issue-img-wrapper"><img src="${i.img}" onerror="this.src='https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'"></div>
+      <div class="issue-card-content">
+        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><span class="text-xs text-muted">${i.id}</span><span class="badge badge-high">Unfunded</span></div>
+        <h3 style="font-size:1.05rem; margin-bottom:0.5rem;">${i.title}</h3><p class="text-xs text-muted mb-2">📍 ${i.location}</p>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:0.75rem; margin-top:auto;"><span class="text-xs text-purple font-medium">👥 ${i.volunteers} Volunteers</span><button class="btn text-xs" style="background:var(--purple); color:white; border-radius:50px;" onclick="openModal('${i.id}')">View</button></div>
+      </div>
+    </div>`).join('');
+}
+
+async function renderBudget() {
+  let db = await getDB(); const pending = db.filter(i => i.budget.includes('Pending') && i.status !== 'resolved'); 
+  const tbody = document.getElementById('budget-approval-table'); if(!tbody) return;
+  if(pending.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">All issues funded.</td></tr>'; return; }
+  tbody.innerHTML = pending.map(i => `<tr><td><span class="table-id">${i.id}</span></td><td><div class="font-medium">${i.title}</div><div class="text-xs text-muted">📍 ${i.location}</div></td><td><span class="badge badge-outline">${i.dept}</span></td><td class="font-medium" style="color:var(--danger);">₹${i.priority === 'high' ? '75,000' : '25,000'}</td><td><button type="button" class="btn btn-success text-xs" style="border-radius:50px;" onclick="allocateFunds('${i.id}')">Approve Funds</button></td></tr>`).join('');
+}
+
+async function allocateFunds(id) {
+  let db = await getDB(); const iss = db.find(i => i.id === id);
+  let newTimeline = [...iss.timeline, {title: 'Funds Approved', date: new Date().toISOString(), type:'active'}];
+  await updateDB(id, { budget: 'Funded', status: 'in progress', timeline: newTimeline });
+  await logAudit('FUNDS_ALLOCATED', `Approved budget for Issue ${id}.`);
+  showToast(`Funding approved!`, 'success', '💰');
+  await reRenderAllActive();
+}
+
+async function renderGov() {
+  let db = await getDB();
+  const e1 = document.getElementById('gov-l1'); if(e1) e1.innerText = db.filter(i=>i.escalationLevel===1).length;
+  const e2 = document.getElementById('gov-l2'); if(e2) e2.innerText = db.filter(i=>i.escalationLevel===2).length;
+  const e3 = document.getElementById('gov-l3'); if(e3) e3.innerText = db.filter(i=>i.escalationLevel===3).length;
+  const list = document.getElementById('gov-issue-list'); if(!list) return;
+  const escalations = db.filter(i=>i.escalationLevel > 0 && i.status !== 'resolved').sort((a,b)=>b.escalationLevel - a.escalationLevel);
+  if(escalations.length === 0) { list.innerHTML = `<p style="color:white;">No active escalations.</p>`; return; }
+  list.innerHTML = escalations.map(i => `
+    <div class="gov-issue-card">
+      <div>
+        <div style="display:flex; gap: 0.5rem; align-items:center; margin-bottom: 0.5rem;"><span class="badge badge-high" style="background:#ea580c; color:white;">LEVEL ${i.escalationLevel}</span><span class="text-xs" style="color:#94a3b8;">Pending: ${i.daysPending} Days</span></div>
+        <h3 style="font-size:1.15rem; margin-bottom:0.25rem;">${i.title}</h3>
+        <p class="text-sm" style="color:#94a3b8;">Dept: <strong>${i.dept}</strong> | Upvotes: ${i.upvotes}</p>
+      </div>
+      <div style="display:flex; gap: 0.5rem;"><button class="btn" style="background:#334155; color: white;" onclick="openModal('${i.id}')">View</button><button class="btn" style="background: #ea580c; color: white;" onclick="generateDigitalNotice('${i.id}')">Issue Notice</button></div>
+    </div>`).join('');
+}
+
+async function renderTransparency() {
+  let db = await getDB(); const list = document.getElementById('transparency-list'); if(!list) return;
+  const esc = db.filter(i=>i.escalationLevel > 0 && i.status !== 'resolved').sort((a,b)=>b.daysPending - a.daysPending);
+  if(esc.length === 0) { list.innerHTML = `<p class="text-muted" style="padding:1rem;">No issues are currently pending beyond SLA.</p>`; return;}
+  list.innerHTML = esc.map(i => `<div style="padding:1rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;"><span><strong style="color:var(--text-primary);">${i.title}</strong><br><span class="text-xs text-muted">Assigned: ${i.dept}</span></span> <span class="badge badge-high" style="font-size:0.85rem;">Delayed ${i.daysPending} days</span></div>`).join('');
+}
+
+async function renderSuperAdmin() {
+  const uTbody = document.getElementById('sa-users-table'); const logDiv = document.getElementById('sa-audit-logs');
+  if(!uTbody || !logDiv || !supabaseClient) return;
+  const { data: users } = await supabaseClient.from('app_users').select('*').order('created_at', {ascending: false});
+  const { data: logs } = await supabaseClient.from('audit_logs').select('*').order('created_at', {ascending: false});
+  if(users) uTbody.innerHTML = users.map(u => `<tr style="border-bottom: 1px solid var(--border);"><td style="padding:10px;">${u.name}</td><td style="padding:10px;">${u.email}</td><td style="padding:10px;"><span class="badge badge-outline">${u.role}</span></td><td style="padding:10px; font-weight:bold;">${u.points}</td></tr>`).join('');
+  if(logs) {
+    if(logs.length === 0) logDiv.innerHTML = '<p style="color:#94a3b8;">No audit logs yet.</p>';
+    else logDiv.innerHTML = logs.map(l => `<div style="background: rgba(255,255,255,0.05); padding: 1rem; border-left: 4px solid #10b981; border-radius: 4px; margin-bottom: 0.8rem;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><strong style="color:#10b981;">[${l.action}]</strong><span style="font-size:0.75rem; color:#94a3b8;">${new Date(l.created_at).toLocaleString()}</span></div><div style="font-size:0.85rem;">User: <strong>${l.user_email}</strong> (${l.role})</div><div style="font-size:0.85rem; color:#cbd5e1; margin-top:5px;">${l.details}</div></div>`).join('');
+  }
+}
+async function renderNgo() {
+  let db = await getDB(); 
+  const cont = document.getElementById('ngo-issue-list'); 
+  if(!cont) return;
+  cont.innerHTML = db.filter(i=>i.budget.includes('Pending')).map(i => `
+    <div class="issue-card-clean" style="border-color:var(--purple);">
+      <div class="issue-img-wrapper"><img src="${i.img}"></div>
+      <div class="issue-card-content">
+        <h3>${i.title}</h3>
+        <button class="btn" style="background:var(--purple); color:white; width:100%; margin-top:10px;">Adopt Project</button>
+      </div>
+    </div>`).join('');
+}
