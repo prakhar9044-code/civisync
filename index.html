@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,8 +28,15 @@
 </head>
 <body>
 
+<div id="global-loader" class="loader-overlay">
+  <div class="loader-content">
+    <img src="https://cdn-icons-png.flaticon.com/512/2942/2942821.png" alt="CiviSync" class="loader-logo">
+    <h2 style="color: white; margin-top: 15px; font-weight: 800; letter-spacing: 1px;">CiviSync</h2>
+    <div class="loader-spinner"></div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
-<div id="offline-banner">⚠️ You are offline. Reports will be saved locally and synced automatically when connection is restored.</div>
 
 <div class="advisory-marquee" id="global-advisory">
   <div class="advisory-content">
@@ -60,6 +68,7 @@
     <div class="nav-link ripple-element hidden auth-req" id="nav-ngo" onclick="navigate('ngo')" style="color: var(--purple); font-weight: bold;">NGO Hub</div>
     
     <div class="nav-link ripple-element hidden auth-req" id="nav-admin" onclick="navigate('admin')">Dashboard</div>
+    <div class="nav-link ripple-element hidden auth-req" id="nav-analytics" onclick="navigate('analytics')">Analytics</div>
     <div class="nav-link ripple-element hidden auth-req" id="nav-budget" onclick="navigate('budget')">Budgeting</div>
     <div class="nav-link ripple-element hidden auth-req" id="nav-gov" onclick="navigate('gov')" style="color: #ea580c; font-weight: bold;">🏛️ Govt Channel</div>
     <div class="nav-link ripple-element hidden auth-req" id="nav-integrations" onclick="navigate('integrations')">🔌 Integrations</div>
@@ -67,11 +76,7 @@
   </div>
 
   <div class="nav-controls">
-    <div class="lang-3d-wrapper">
-      <button class="lang-3d-btn" id="lang-btn" onclick="cycleLanguage()">
-        <span class="lang-3d-front" id="lang-label">🌐 EN</span>
-      </button>
-    </div>
+    <div id="google_translate_element" class="translate-box"></div>
 
     <div id="user-points" class="points-badge hidden" onclick="navigate('points')">⭐ <span id="pts-val">0</span> pts</div>
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">🌙</button>
@@ -80,9 +85,12 @@
     <div class="user-menu-container hidden" id="user-menu-container">
       <div class="user-avatar" id="avatar-initials">U</div>
       <div class="dropdown-menu" id="avatar-dropdown">
-        <div class="dropdown-header"><h4 id="drop-name">User Name</h4><p id="drop-email">user@email.com</p></div>
+        <div class="dropdown-header">
+          <h4 id="drop-name">User Name</h4>
+          <p id="drop-email">user@email.com</p>
+        </div>
         <div class="dropdown-item" onclick="navigate('profile')">👤 My Profile</div>
-        <div class="dropdown-item" onclick="navigate('settings')">⚙️ Settings & Alerts</div>
+        <div class="dropdown-item" onclick="navigate('settings')">⚙️ Settings & DB Sync</div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" style="color: var(--danger);" onclick="logout()">🚪 Logout</div>
       </div>
@@ -106,11 +114,46 @@
       <div class="section-title"><h2 id="title-testimonial">What Our City Says</h2></div>
       <div class="testimonial-wrapper">
         <div class="testimonial-track" id="testimonial-track">
-          <div class="testimonial-card"><div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div><p class="text-sm">"This platform is amazing! I reported a broken streetlight using my voice, and it was fixed in just 2 days."</p><div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;"><div style="width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold;">SL</div><div><h4 style="font-size:0.9rem;">Sarah L.</h4><p class="text-xs text-muted">Local Citizen</p></div></div></div>
-          <div class="testimonial-card"><div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div><p class="text-sm">"As an NGO director, CiviSync helps us find unfunded projects to adopt."</p><div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;"><div style="width: 40px; height: 40px; background: var(--purple-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--purple); font-weight: bold;">GE</div><div><h4 style="font-size:0.9rem;">Green Earth Org</h4><p class="text-xs text-muted">Community Partner</p></div></div></div>
-          <div class="testimonial-card"><div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div><p class="text-sm">"The budget transparency dashboard saves our phone lines. Citizens can actually see why projects are delayed."</p><div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;"><div style="width: 40px; height: 40px; background: var(--danger-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--danger); font-weight: bold;">MT</div><div><h4 style="font-size:0.9rem;">Mark T.</h4><p class="text-xs text-muted">City Planner</p></div></div></div>
-          <div class="testimonial-card"><div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div><p class="text-sm">"Generating automated policy reports in PDF format makes our quarterly budget meetings 10x more efficient."</p><div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;"><div style="width: 40px; height: 40px; background: var(--success-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--success); font-weight: bold;">RJ</div><div><h4 style="font-size:0.9rem;">Rachel J.</h4><p class="text-xs text-muted">Authority Admin</p></div></div></div>
-          <div class="testimonial-card"><div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div><p class="text-sm">"This platform is amazing! I reported a broken streetlight using my voice, and it was fixed in just 2 days."</p><div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;"><div style="width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold;">SL</div><div><h4 style="font-size:0.9rem;">Sarah L.</h4><p class="text-xs text-muted">Local Citizen</p></div></div></div>
+          <div class="testimonial-card">
+            <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+            <p class="text-sm">"This platform is amazing! I reported a broken streetlight using my voice, and it was fixed in just 2 days. The tracking is so transparent."</p>
+            <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+              <div style="width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold;">SL</div>
+              <div><h4 style="font-size:0.9rem;">Sarah L.</h4><p class="text-xs text-muted">Local Citizen</p></div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+            <p class="text-sm">"As an NGO director, CiviSync helps us find unfunded projects to adopt. The 'Volunteer' button is a game-changer for community action."</p>
+            <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+              <div style="width: 40px; height: 40px; background: var(--purple-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--purple); font-weight: bold;">GE</div>
+              <div><h4 style="font-size:0.9rem;">Green Earth Org</h4><p class="text-xs text-muted">Community Partner</p></div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+            <p class="text-sm">"The budget transparency dashboard saves our phone lines. Citizens can actually see *why* a project is delayed to the next cycle."</p>
+            <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+              <div style="width: 40px; height: 40px; background: var(--danger-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--danger); font-weight: bold;">MT</div>
+              <div><h4 style="font-size:0.9rem;">Mark T.</h4><p class="text-xs text-muted">City Planner</p></div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+            <p class="text-sm">"Generating automated policy reports in PDF format makes our quarterly budget meetings 10x more efficient. Pure data."</p>
+            <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+              <div style="width: 40px; height: 40px; background: var(--success-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--success); font-weight: bold;">RJ</div>
+              <div><h4 style="font-size:0.9rem;">Rachel J.</h4><p class="text-xs text-muted">Authority Admin</p></div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+            <p class="text-sm">"This platform is amazing! I reported a broken streetlight using my voice, and it was fixed in just 2 days. The tracking is so transparent."</p>
+            <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+              <div style="width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold;">SL</div>
+              <div><h4 style="font-size:0.9rem;">Sarah L.</h4><p class="text-xs text-muted">Local Citizen</p></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -120,6 +163,7 @@
         <h2>Next-Generation Civic Technology</h2>
         <p>Going beyond simple reporting by handling real-world municipal challenges like budget constraints and temporary safety measures.</p>
       </div>
+      
       <div class="grid-3">
         <div class="feature-card">
           <div class="feature-icon animated-icon">✨</div>
@@ -266,19 +310,38 @@
 
           <form id="form-cit-login" class="auth-animate" onsubmit="handleCitizenOTPFlow(event)">
             <div id="cit-login-step-1">
-              <div class="form-group"><label class="form-label">Registered Email</label><input type="email" id="cit-login-identifier" class="form-control" placeholder="citizen@city.com" required></div>
-              <div class="form-group" style="position:relative;"><label class="form-label">Secure Password (Optional if using OTP)</label><input type="password" class="form-control" id="cit-login-pwd" placeholder="••••••••"><span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('cit-login-pwd')">👁️</span></div>
-              <div style="text-align: right; margin-bottom: 1.5rem;"><span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600;" onclick="openForgotPassword()">Forgot Password?</span></div>
+              <div class="form-group">
+                <label class="form-label">Registered Email</label>
+                <input type="email" id="cit-login-identifier" class="form-control" placeholder="citizen@city.com" required>
+              </div>
+              <div class="form-group" style="position:relative;">
+                <label class="form-label">Secure Password (Optional if using OTP)</label>
+                <input type="password" class="form-control" id="cit-login-pwd" placeholder="••••••••">
+                <span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('cit-login-pwd')">👁️</span>
+              </div>
+              <div style="text-align: right; margin-bottom: 1.5rem;">
+                <span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600;" onclick="openForgotPassword()">Forgot Password?</span>
+              </div>
+              
               <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;">Request OTP via EmailJS</button>
+              
               <div style="text-align:center; margin:15px 0; color:var(--text-secondary); font-size:0.85rem;">- OR -</div>
+              
               <button type="button" class="btn btn-outline ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;" onclick="handleAuth(event, 'citizen_pwd')">Login with Password</button>
             </div>
             
             <div id="cit-login-step-2" class="hidden">
               <p class="text-sm text-success" style="margin-bottom:1rem; font-weight:600;">✅ EmailJS OTP Sent successfully!</p>
-              <div class="form-group"><label class="form-label">Enter 4-Digit OTP</label><input type="text" id="cit-login-otp" class="form-control" placeholder="1234"></div>
+              <div class="form-group">
+                <label class="form-label">Enter 4-Digit OTP</label>
+                <input type="text" id="cit-login-otp" class="form-control" placeholder="1234">
+              </div>
               <button type="button" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;" onclick="verifyCitizenOTP()">Verify & Secure Login</button>
-              <div style="display:flex; justify-content:space-between; margin-top: 15px;"><span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline;" onclick="reEnterEmail()">Change Email</span><span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline;" onclick="resendOTP()">Resend OTP</span></div>
+              
+              <div style="display:flex; justify-content:space-between; margin-top: 15px;">
+                <span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline;" onclick="reEnterEmail()">Change Email</span>
+                <span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline;" onclick="resendOTP()">Resend OTP</span>
+              </div>
             </div>
           </form>
 
@@ -455,15 +518,17 @@
   <div id="view-profile" class="view container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem;">
       <h2>👤 My Profile</h2>
-      <button class="btn btn-outline ripple-element" style="border-radius:50px;">✏️ Edit Profile</button>
+      <button class="btn btn-outline ripple-element" onclick="navigate('settings')" style="border-radius:50px;">✏️ Edit Details</button>
     </div>
     <div class="grid-2">
       <div class="card profile-card-anim" style="text-align: center; padding: 3rem 1.5rem;">
-        <div id="prof-avatar" style="width: 100px; height: 100px; background: linear-gradient(135deg, var(--primary), var(--purple)); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: bold; margin: 0 auto 1.5rem; box-shadow: var(--shadow-md);">U</div>
+        <div id="prof-avatar" style="width: 100px; height: 100px; background: linear-gradient(135deg, var(--primary), var(--purple)); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; margin: 0 auto 1.5rem; box-shadow: var(--shadow-md);">U</div>
         <h2 id="prof-name" style="margin-bottom: 0.5rem;">User Name</h2>
         <p id="prof-email" class="text-muted" style="margin-bottom: 1.5rem;">user@email.com</p>
-        <div class="badge badge-in-progress" id="prof-role-badge">Citizen</div>
-        <button class="btn btn-primary ripple-element mt-4" style="width:100%; border-radius:8px;" onclick="navigate('settings')">Manage Notification Preferences</button>
+        <p id="prof-phone" style="font-weight: 600; margin-top: 10px; color: var(--primary);"></p>
+        <p id="prof-bio" class="text-sm text-muted" style="margin-top: 10px; font-style: italic;"></p>
+        <div class="badge badge-in-progress" id="prof-role-badge" style="margin-top: 15px;">Citizen</div>
+        <button class="btn btn-primary ripple-element mt-4" style="width:100%; border-radius:8px;" onclick="navigate('settings')">Manage Database Settings</button>
       </div>
       
       <div class="card profile-card-anim">
@@ -489,29 +554,29 @@
   </div>
 
   <div id="view-settings" class="view container">
-    <div style="margin-bottom: 2rem;"><h2>⚙️ Account & Smart Alerts</h2></div>
+    <div style="margin-bottom: 2rem;"><h2>⚙️ Account & Database Sync</h2></div>
     <div class="card" style="max-width: 700px; margin:0 auto;">
-      <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">App Preferences</h3>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <div><strong>Dark Mode</strong><p class="text-xs text-muted">Toggle dark theme for the interface.</p></div>
-        <button class="btn btn-outline ripple-element" onclick="toggleTheme()">Toggle Theme 🌓</button>
+      
+      <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Profile Information (Synced to Cloud)</h3>
+      <p class="text-xs text-muted" style="margin-bottom: 1rem;">Information here will be pushed directly to your Supabase User Table.</p>
+      
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <input type="text" id="set-phone" class="form-control" placeholder="+91 99999 99999">
       </div>
       
-      <h3 style="margin-bottom: 1.5rem; margin-top:2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Smart Notification System</h3>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <div><strong>📧 Email Alerts</strong><p class="text-xs text-muted">Receive updates when your issues are resolved via EmailJS.</p></div>
-        <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
-      </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <div><strong>📱 SMS Alerts</strong><p class="text-xs text-muted">Get text messages for high-priority emergency updates.</p></div>
-        <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
-      </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <div><strong>🔔 Web Push Notifications</strong><p class="text-xs text-muted">Browser notifications when an admin replies.</p></div>
-        <label class="toggle-switch"><input type="checkbox"><span class="slider"></span></label>
+      <div class="form-group">
+        <label class="form-label">Bio / Organization Details</label>
+        <textarea id="set-bio" class="form-control" placeholder="Tell us about yourself..."></textarea>
       </div>
 
-      <button class="btn btn-blue ripple-element" style="width: 100%; border-radius: 50px; margin-top: 1rem;" onclick="showToast('Preferences securely saved!', 'success', '⚙️')">Save Settings</button>
+      <h3 style="margin-bottom: 1.5rem; margin-top:2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Smart Notification System</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div><strong>📧 Email Alerts</strong><p class="text-xs text-muted">Receive updates via EmailJS.</p></div>
+        <label class="toggle-switch"><input type="checkbox" id="set-email-alert" checked><span class="slider"></span></label>
+      </div>
+
+      <button class="btn btn-blue ripple-element" style="width: 100%; border-radius: 50px; margin-top: 1rem;" onclick="saveSettingsToDB()">Save & Push to Database ☁️</button>
     </div>
   </div>
 
@@ -620,7 +685,7 @@
       <div class="tab-pill ripple-element" onclick="setTrackTab('resolved', this)">Resolved <span id="cnt-res" style="margin-left:0.5rem; opacity:0.7;">0</span></div>
     </div>
     <div id="track-list-container" class="issue-grid"></div>
-    <div id="track-map-container" class="hidden"><div id="leaflet-map"></div></div>
+    <div id="track-map-container" class="hidden"><div id="leaflet-map" style="height:500px; width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border);"></div></div>
   </div>
 
   <div id="view-map" class="view container">
@@ -628,7 +693,7 @@
       <h2>🗺️ Interactive Issue Map</h2>
       <p class="text-muted text-sm">Watch the live "Crew Tracker" for issues currently 'In Progress'.</p>
     </div>
-    <div class="card" style="padding: 0; overflow: hidden;"><div id="dedicated-map"></div></div>
+    <div class="card" style="padding: 0; overflow: hidden;"><div id="dedicated-map" style="height:500px; width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border);"></div></div>
   </div>
 
   <div id="view-transparency" class="view container">
@@ -868,7 +933,7 @@
 
       <div class="volunteer-box">
         <div><h4 style="font-size:0.875rem; color:var(--purple); margin-bottom:0.25rem;">🤝 Community Action Needed</h4><p class="text-xs text-muted">Government funds are constrained. <span id="mod-vol-count">0</span> citizens have volunteered to help fix this.</p></div>
-        <button class="btn ripple-element" style="background:var(--purple); color:white; border-radius:50px; font-size:0.8rem;" onclick="openNGOForm()">Volunteer / Adopt</button>
+        <button class="btn ripple-element" style="background:var(--purple); color:white; border-radius:50px; font-size:0.8rem;" onclick="openNGOForm(activeModalIssueId)">Volunteer / Adopt</button>
       </div>
 
       <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:1rem; margin-top:1rem;">
@@ -999,6 +1064,13 @@
     </div>
   </div>
 </div>
+
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
 <script src="script.js"></script>
 
