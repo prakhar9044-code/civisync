@@ -1,38 +1,32 @@
 /* ==========================================================================
-   1. CRASH-PROOF API INITIALIZATIONS 
+   1. CRASH-PROOF API INITIALIZATIONS & OAUTH FIX
    ========================================================================== */
 let supabaseClient = null;
 
 try {
   const { createClient } = supabase;
   const supabaseUrl = 'https://nsyoivdrcydlfcvipzfy.supabase.co'; 
-  
-  // 🛑 PASTE YOUR LONG SUPABASE ANON KEY INSIDE THESE QUOTES 🛑
   const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9pdmRyY3lkbGZjdmlwemZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2ODk0MTQsImV4cCI6MjA4NzI2NTQxNH0.cjoVyfucX3nu0BjBreN2FapxL9h0_dISr6KSat4TNZY"; 
-  
   supabaseClient = createClient(supabaseUrl, supabaseKey);
-} catch (error) {
-  console.error("Supabase Failed to Load - Check your Keys!", error);
+} catch (error) { 
+  console.error("Supabase Error", error); 
 }
 
-try {
-  // Your real EmailJS Public Key
-  emailjs.init("x81DiBvSLoBxiEnmx");
-} catch (error) {
-  console.error("EmailJS Failed to Load!", error);
+try { 
+  emailjs.init("x81DiBvSLoBxiEnmx"); 
+} catch (error) { 
+  console.error("EmailJS Error", error); 
 }
-
-// NOTE: External AI APIs (Gemini/OpenAI) removed as requested. Using Local Rule-Based Bot.
 
 /* ==========================================================================
-   2. GLOBAL STATE VARIABLES 
+   2. GLOBAL STATE VARIABLES
    ========================================================================== */
 let currentUser = JSON.parse(sessionStorage.getItem('civisync_user')) || null; 
 let trackTabActive = 'All'; 
 let mapInstance = null; 
 let dedicatedMapInstance = null; 
 let activeModalIssueId = null; 
-let charts = {};
+let charts = {}; 
 let truckTweens = [];
 let currentFileBase64 = 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80';
 let typeInterval; 
@@ -42,39 +36,65 @@ let resetEmailMemory = "";
 let resetOTPMemory = "";
 
 /* ==========================================================================
-   3. 3D LANGUAGE TOGGLE LOGIC
+   3. GLOBAL LOADER ANIMATION
    ========================================================================== */
-const languages = [
-  { code: 'EN', flag: '🌐', text: 'EN', heroSub: 'Empowering citizens with AI-driven routing, transparent budget tracking, and community volunteering.', titleTest: 'What Our City Says' },
-  { code: 'HI', flag: '🇮🇳', text: 'HI', heroSub: 'एआई-संचालित रूटिंग, पारदर्शी बजट ट्रैकिंग और सामुदायिक स्वयंसेवा के साथ नागरिकों को सशक्त बनाना।', titleTest: 'हमारा शहर क्या कहता है' },
-  { code: 'ES', flag: '🇪🇸', text: 'ES', heroSub: 'Empoderando a los ciudadanos con enrutamiento guiado por IA y voluntariado comunitario.', titleTest: 'Lo que dice nuestra ciudad' }
-];
-let currLangIdx = 0;
+function showLoader() { 
+  const loader = document.getElementById('global-loader');
+  if(loader) { loader.style.opacity = '1'; loader.style.pointerEvents = 'all'; }
+}
+function hideLoader() { 
+  const loader = document.getElementById('global-loader');
+  if(loader) { loader.style.opacity = '0'; loader.style.pointerEvents = 'none'; }
+}
+// Hide loader initially after page loads
+setTimeout(hideLoader, 1500);
 
-function cycleLanguage() {
-  currLangIdx = (currLangIdx + 1) % languages.length;
-  const l = languages[currLangIdx];
-  
-  const langLabel = document.getElementById('lang-label');
-  if(langLabel) langLabel.innerText = `${l.flag} ${l.text}`;
-  
-  const heroSub = document.getElementById('hero-sub');
-  if(heroSub) heroSub.innerText = l.heroSub;
-  
-  const tTitle = document.getElementById('title-testimonial');
-  if(tTitle) tTitle.innerText = l.titleTest;
+/* ==========================================================================
+   4. OAUTH SESSION CATCHER (FIXES VERCEL GOOGLE/FACEBOOK LOGIN)
+   ========================================================================== */
+if (supabaseClient) {
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      showLoader();
+      const email = session.user.email;
+      const name = session.user.user_metadata?.full_name || email.split('@')[0];
 
-  showToast(`Language switched to ${l.text}`, 'primary', l.flag);
+      let { data } = await supabaseClient.from('app_users').select('*').eq('email', email);
+
+      if (!data || data.length === 0) {
+        let { data: newUser } = await supabaseClient.from('app_users').insert([{
+          name: name,
+          email: email,
+          password: 'oauth_user_secure', 
+          role: 'citizen',
+          points: 150
+        }]).select();
+        currentUser = newUser[0];
+      } else {
+        currentUser = data[0];
+      }
+
+      sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
+      window.history.replaceState(null, null, window.location.pathname); // Clean URL
+      
+      applyLoginUI();
+      navigate(currentUser.role === 'citizen' ? 'track' : 'admin');
+      showToast(`Welcome securely via Social Login, ${currentUser.name}!`, 'success', '✅');
+      hideLoader();
+    }
+  });
 }
 
 /* ==========================================================================
-   4. LOCAL RULE-BASED ACTION CHATBOT (No API Required)
+   5. LOCAL RULE-BASED ACTION CHATBOT 
    ========================================================================== */
 function toggleChat() { 
-  const cw = document.getElementById('chat-window'); 
+  const cw = document.getElementById('chat-window');
   if(cw) {
     cw.classList.toggle('hidden');
-    if(!cw.classList.contains('hidden') && typeof gsap !== 'undefined') gsap.fromTo(cw, {opacity:0, y:20}, {opacity:1, y:0, duration:0.3});
+    if(!cw.classList.contains('hidden') && typeof gsap !== 'undefined') {
+      gsap.fromTo(cw, {opacity:0, y:20}, {opacity:1, y:0, duration:0.3});
+    }
   }
 }
 
@@ -98,25 +118,21 @@ function sendLocalChat() {
 
   setTimeout(() => {
     document.getElementById(typingId).remove();
-    let reply = "I'm the local CiviBot! I can help you navigate. Try asking me to 'report an issue', 'track complaints', 'volunteer', or 'view points'.";
+    let reply = "I'm the local CiviBot! Try asking me to 'report an issue', 'track complaints', or 'volunteer'.";
 
     if (rawTxt.includes('report') || rawTxt.includes('pothole') || rawTxt.includes('issue')) {
       reply = "✅ Taking you to the Issue Uplink portal right now!";
       setTimeout(() => checkAuthAndGo('report'), 1500);
-    } 
-    else if (rawTxt.includes('track') || rawTxt.includes('status') || rawTxt.includes('delay')) {
+    } else if (rawTxt.includes('track') || rawTxt.includes('delay')) {
       reply = "✅ Fetching the Tracking Dashboard for you!";
       setTimeout(() => checkAuthAndGo('track'), 1500);
-    } 
-    else if (rawTxt.includes('volunteer') || rawTxt.includes('ngo') || rawTxt.includes('adopt')) {
+    } else if (rawTxt.includes('volunteer') || rawTxt.includes('ngo')) {
       reply = "✅ Routing you to the Community NGO Hub!";
       setTimeout(() => checkAuthAndGo('ngo'), 1500);
-    } 
-    else if (rawTxt.includes('point') || rawTxt.includes('reward') || rawTxt.includes('score')) {
+    } else if (rawTxt.includes('point') || rawTxt.includes('reward')) {
       reply = "✅ Opening your Civic Points & Rewards page!";
       setTimeout(() => checkAuthAndGo('points'), 1500);
-    }
-    else if (rawTxt.includes('hello') || rawTxt.includes('hi ') || rawTxt === 'hi') {
+    } else if (rawTxt.includes('hello') || rawTxt.includes('hi')) {
       reply = "Hello there! How can I help you improve our city today?";
     }
 
@@ -126,13 +142,13 @@ function sendLocalChat() {
 }
 
 /* ==========================================================================
-   5. CORE UI & UTILITIES
+   6. CORE UI & UTILITIES
    ========================================================================== */
 function showToast(message, type = 'primary', icon = '🔔') {
   const container = document.getElementById('toast-container');
   if(!container) return;
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
+  const toast = document.createElement('div'); 
+  toast.className = `toast ${type}`; 
   toast.innerHTML = `<span class="toast-icon">${icon}</span> <span>${message}</span>`;
   container.appendChild(toast);
   
@@ -147,17 +163,14 @@ function showToast(message, type = 'primary', icon = '🔔') {
 
 async function dispatchEmail(userEmail, userName, actionTitle, actionDetails) {
   try {
-    await emailjs.send("service_0952wxc", "template_tes0o8g", {
-      to_email: userEmail,
+    await emailjs.send("service_0952wxc", "template_tes0o8g", { 
+      to_email: userEmail, 
       name: userName, 
       user_name: userName, 
       action_title: actionTitle, 
       action_details: actionDetails 
     });
-    console.log(`Email successfully dispatched to ${userEmail}`);
-  } catch (error) { 
-    console.error("Email Dispatch Failed:", error); 
-  }
+  } catch (error) { console.error("Email Dispatch Failed:", error); }
 }
 
 function createHash() { return '0x' + Math.random().toString(16).slice(2, 10); }
@@ -165,25 +178,30 @@ function createHash() { return '0x' + Math.random().toString(16).slice(2, 10); }
 function createRipple(event) {
   const button = event.currentTarget; const circle = document.createElement("span");
   const d = Math.max(button.clientWidth, button.clientHeight);
-  circle.style.width = circle.style.height = `${d}px`;
-  circle.style.left = `${event.clientX - button.getBoundingClientRect().left - d/2}px`; circle.style.top = `${event.clientY - button.getBoundingClientRect().top - d/2}px`;
-  circle.classList.add("ripple"); const existing = button.getElementsByClassName("ripple")[0]; if(existing) existing.remove();
+  circle.style.width = circle.style.height = `${d}px`; 
+  circle.style.left = `${event.clientX - button.getBoundingClientRect().left - d/2}px`; 
+  circle.style.top = `${event.clientY - button.getBoundingClientRect().top - d/2}px`;
+  circle.classList.add("ripple"); 
+  const existing = button.getElementsByClassName("ripple")[0]; if(existing) existing.remove();
   button.appendChild(circle);
 }
 
-function triggerHeroAnimation() {
-  const els = document.querySelectorAll('.reveal-text');
-  els.forEach(el => el.classList.remove('visible'));
-  setTimeout(() => els.forEach(el => el.classList.add('visible')), 100);
+function triggerHeroAnimation() { 
+  setTimeout(() => document.querySelectorAll('.reveal-text').forEach(el => el.classList.add('visible')), 100); 
 }
 
 function triggerTypewriter() {
-  const el = document.getElementById('typewriter-text'); if(!el) return;
+  const el = document.getElementById('typewriter-text'); if(!el) return; 
   clearInterval(typeInterval); el.innerHTML = '<span id="tw-content"></span><span class="cursor-blink">&nbsp;</span>';
   const contentEl = document.getElementById('tw-content'); const text = "A Smarter Way to Report,^Track, and Resolve Civic Issues."; let idx = 0;
-  typeInterval = setInterval(() => {
-    if(idx < text.length) { if(text.charAt(idx) === '^') contentEl.innerHTML += "<br>"; else contentEl.innerHTML += text.charAt(idx); idx++; } 
-    else { clearInterval(typeInterval); }
+  typeInterval = setInterval(() => { 
+    if(idx < text.length) { 
+      if(text.charAt(idx) === '^') contentEl.innerHTML += "<br>"; 
+      else contentEl.innerHTML += text.charAt(idx); 
+      idx++; 
+    } else {
+      clearInterval(typeInterval); 
+    }
   }, 50);
 }
 
@@ -195,27 +213,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       gsap.to('#testimonial-track', { x: "-50%", duration: 30, ease: "none", repeat: -1 });
   }
   
-  if (currentUser) {
-    applyLoginUI();
-    navigate(currentUser.role === 'citizen' ? 'track' : 'admin');
+  if (currentUser) { 
+    applyLoginUI(); 
+    navigate(currentUser.role === 'citizen' ? 'track' : 'admin'); 
   }
   await runAutoEscalationEngine(); 
 });
 
 /* ==========================================================================
-   6. DB ABSTRACTIONS & POINTS LOGGING
+   7. DB ABSTRACTIONS & SETTINGS SYNC 
    ========================================================================== */
-async function getDB() {
-  if(!supabaseClient) return [];
-  const { data, error } = await supabaseClient.from('issues').select('*').order('created', { ascending: false });
-  if (error) { console.error("Supabase Fetch Error:", error); return []; }
-  return data;
+async function getDB() { 
+  if(!supabaseClient) return []; 
+  const { data } = await supabaseClient.from('issues').select('*').order('created', { ascending: false }); 
+  return data || []; 
 }
 
-async function updateDB(id, updates) {
-  if(!supabaseClient) return;
-  const { error } = await supabaseClient.from('issues').update(updates).eq('id', id);
-  if (error) console.error("Supabase Update Error:", error);
+async function updateDB(id, updates) { 
+  if(supabaseClient) await supabaseClient.from('issues').update(updates).eq('id', id); 
 }
 
 async function logAudit(action, details) {
@@ -238,14 +253,32 @@ async function updateUserStats(pointsAdd, reportedAdd, volAdd, actionName) {
   if(pointsAdd > 0) {
     await logPointsHistory(actionName, pointsAdd);
     showToast(`You earned ${pointsAdd} Civic Points!`, 'success', '⭐');
-    dispatchEmail(currentUser.email, currentUser.name, `Points Earned: ${actionName}`, `Congratulations! You just earned ${pointsAdd} Civic Points for: ${actionName}. Your total balance is now ${currentUser.points}.`);
+    dispatchEmail(currentUser.email, currentUser.name, `Points Earned: ${actionName}`, `Congratulations! You just earned ${pointsAdd} Civic Points for: ${actionName}.`);
   } else if (pointsAdd < 0) {
     await logPointsHistory(actionName, pointsAdd);
     showToast(`Redeemed ${Math.abs(pointsAdd)} Civic Points!`, 'primary', '🎁');
-    dispatchEmail(currentUser.email, currentUser.name, `Reward Redeemed: ${actionName}`, `You have successfully used ${Math.abs(pointsAdd)} points to redeem: ${actionName}. Your remaining balance is ${currentUser.points}. Enjoy!`);
+    dispatchEmail(currentUser.email, currentUser.name, `Reward Redeemed: ${actionName}`, `You successfully used ${Math.abs(pointsAdd)} points.`);
   }
   const pts = document.getElementById('pts-val'); if(pts) pts.innerText = currentUser.points;
   const mPts = document.getElementById('manage-pts'); if(mPts) mPts.innerText = currentUser.points;
+}
+
+async function saveSettingsToDB() {
+  if(!currentUser || !supabaseClient) return showToast("Please login first.", "warning");
+  showLoader();
+  const phone = document.getElementById('set-phone').value;
+  const bio = document.getElementById('set-bio').value;
+  
+  const { error } = await supabaseClient.from('app_users').update({ phone: phone, bio: bio }).eq('id', currentUser.id);
+  hideLoader();
+  
+  if(error) {
+    showToast("Failed to sync data", "danger");
+  } else {
+    currentUser.phone = phone; currentUser.bio = bio;
+    sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
+    showToast("Profile Synced to Database!", "success", "✅");
+  }
 }
 
 async function runAutoEscalationEngine() {
@@ -282,7 +315,7 @@ async function runAutoEscalationEngine() {
 }
 
 /* ==========================================================================
-   7. STRICT AUTHENTICATION & EMAILJS OTP
+   8. AUTHENTICATION & SOCIAL LOGINS
    ========================================================================== */
 function togglePassword(inputId) {
   const input = document.getElementById(inputId);
@@ -294,6 +327,7 @@ function switchAuthTab(type) {
   document.getElementById('form-adm').classList.toggle('hidden', type !== 'admin');
   document.getElementById('form-gov').classList.toggle('hidden', type !== 'gov');
   document.getElementById('form-super').classList.toggle('hidden', type !== 'super');
+  
   ['cit', 'adm', 'gov', 'super'].forEach(t => {
     const btn = document.getElementById(`tab-${t}`);
     if(btn) { if(t === type) { btn.style.borderBottomColor='var(--primary)'; btn.style.color='var(--primary)'; } else { btn.style.borderBottomColor='transparent'; btn.style.color='var(--text-secondary)'; } }
@@ -303,52 +337,44 @@ function switchAuthTab(type) {
 function toggleCitAuth(action) {
   document.getElementById('form-cit-login').classList.toggle('hidden', action !== 'login'); 
   document.getElementById('form-cit-register').classList.toggle('hidden', action !== 'register');
-  document.getElementById('btn-login-cit').classList.toggle('active', action === 'login'); 
-  document.getElementById('btn-reg-cit').classList.toggle('active', action === 'register');
   document.getElementById('btn-login-cit').style.background = action === 'login' ? 'var(--bg-surface)' : 'transparent';
   document.getElementById('btn-reg-cit').style.background = action === 'register' ? 'var(--bg-surface)' : 'transparent';
 }
 
 async function socialLogin(provider) {
   if(!supabaseClient) return showToast("Database not connected.", "warning", "🚫");
-  showToast(`Redirecting to Google secure login...`, 'primary', '📱');
-  const { data, error } = await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
-  if(error) alert("OAuth Error: " + error.message);
+  showLoader();
+  const { error } = await supabaseClient.auth.signInWithOAuth({ 
+    provider: provider, 
+    options: { redirectTo: window.location.origin } 
+  });
+  if(error) { hideLoader(); alert("OAuth Error: " + error.message); }
 }
 
 async function handleCitizenOTPFlow(e) {
-  e.preventDefault();
-  if(!supabaseClient) return showToast("Database not connected. Check keys.", "warning", "🚫");
+  e.preventDefault(); 
+  if(!supabaseClient) return showToast("Database Error", "warning");
   
-  const identifier = document.getElementById('cit-login-identifier').value.trim();
-  pendingLoginEmail = identifier;
-  
+  pendingLoginEmail = document.getElementById('cit-login-identifier').value.trim();
   let {data, error} = await supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail).eq('role', 'citizen');
-  if(error || data.length === 0) {
-    showToast("Email not found. Please register first.", "warning", "🚫");
-    return;
-  }
+  if(error || data.length === 0) return showToast("Email not found. Register first.", "warning");
 
   realGeneratedOTP = Math.floor(1000 + Math.random() * 9000).toString();
-  showToast(`Dispatching secure OTP via EmailJS...`, 'primary', '⏳');
-
+  showToast(`Dispatching OTP via EmailJS...`, 'primary', '⏳');
+  
   try {
-    await emailjs.send("service_0952wxc", "template_tes0o8g", {
-      to_email: pendingLoginEmail,
-      name: data[0].name,
-      user_name: data[0].name,
-      action_title: "Your Secure Login OTP",
-      action_details: `Your 4-digit secure OTP for CiviSync is: ${realGeneratedOTP}. Do not share this with anyone.`
+    await emailjs.send("service_0952wxc", "template_tes0o8g", { 
+      to_email: pendingLoginEmail, 
+      name: data[0].name, 
+      user_name: data[0].name, 
+      action_title: "Secure Login OTP", 
+      action_details: `Your OTP is: ${realGeneratedOTP}` 
     });
-    
-    console.log(`[TESTING] Your OTP is: ${realGeneratedOTP}`); 
-    showToast(`OTP successfully sent to your inbox!`, 'success', '📧');
-    document.getElementById('cit-login-step-1').classList.add('hidden');
+    showToast(`OTP sent!`, 'success'); 
+    document.getElementById('cit-login-step-1').classList.add('hidden'); 
     document.getElementById('cit-login-step-2').classList.remove('hidden');
-  } catch (err) {
-    console.error("EmailJS Error details:", err);
-    let errorMsg = err.text || err.message || JSON.stringify(err);
-    alert("Failed to send OTP.\n\nError details: " + errorMsg + "\n\n(If you see ERR_CERT_AUTHORITY_INVALID, please pause your Web Antivirus for 5 minutes).");
+  } catch (err) { 
+    alert("EmailJS Failed. Check your network."); 
   }
 }
 
@@ -363,20 +389,18 @@ function resendOTP() {
 }
 
 async function verifyCitizenOTP() {
-  const otpInput = document.getElementById('cit-login-otp').value;
-  if(otpInput !== realGeneratedOTP) return showToast("Incorrect OTP entered!", "warning", "❌");
+  if(document.getElementById('cit-login-otp').value !== realGeneratedOTP) return showToast("Incorrect OTP", "warning");
   
-  let {data, error} = await supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail).eq('role', 'citizen');
-  currentUser = data[0];
-  await logAudit('LOGIN', `Citizen logged in securely via Email OTP.`);
-  showToast('Secure Login Successful. Welcome back!', 'success', '✅');
+  let {data} = await supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail).eq('role', 'citizen');
+  currentUser = data[0]; 
+  await logAudit('LOGIN', `Citizen logged in via Email OTP.`);
+  showToast('Secure Login Successful!', 'success'); 
   finalizeLogin();
 }
 
 async function handleAuth(e, type) {
-  if(e) e.preventDefault(); 
-  if(!supabaseClient) return showToast("Database not connected. Check keys.", "warning", "🚫");
-  
+  if(e) e.preventDefault(); if(!supabaseClient) return; 
+  showLoader();
   let email, password, name;
   
   if(type === 'citizen_register') { 
@@ -385,31 +409,25 @@ async function handleAuth(e, type) {
     password = document.querySelectorAll('#form-cit-register input')[2].value;
     
     let {data: exist} = await supabaseClient.from('app_users').select('email').eq('email', email);
-    if(exist && exist.length > 0) { showToast("Email already registered!", "warning", "⚠️"); return; }
+    if(exist && exist.length > 0) { hideLoader(); return showToast("Email registered!", "warning"); }
     
-    let {data: newUser, error} = await supabaseClient.from('app_users').insert([{ name, email, password, role: 'citizen', points: 150 }]).select();
-    if(error) return alert("Database connection error.");
-    
-    currentUser = newUser[0];
+    let {data: newUser} = await supabaseClient.from('app_users').insert([{ name, email, password, role: 'citizen', points: 150 }]).select();
+    currentUser = newUser[0]; 
     await logAudit('REGISTER', 'New citizen account created.');
-    dispatchEmail(email, name, "Welcome to CiviSync", "Your account has been successfully created. You have been awarded 150 starting points!");
-    showToast('Account Created! Welcome to CiviSync.', 'success', '🎉');
-    finalizeLogin();
-  } 
-  else {
+    hideLoader(); showToast('Account Created!', 'success'); finalizeLogin();
+  } else {
     let formId = type === 'citizen_pwd' ? 'form-cit-login' : `form-${type}`;
     let inputs = document.getElementById(formId).querySelectorAll('input');
-    email = inputs[0].value; 
-    password = inputs[1].value; 
+    email = inputs[0].value; password = inputs[1].value; 
     let checkRole = type === 'citizen_pwd' ? 'citizen' : type;
     
     let {data, error} = await supabaseClient.from('app_users').select('*').eq('email', email).eq('password', password).eq('role', checkRole);
-    if(error || data.length === 0) { showToast("Invalid Credentials or Unregistered User!", "warning", "🚫"); return; }
+    hideLoader();
+    if(error || data.length === 0) return showToast("Invalid Credentials", "warning");
     
-    currentUser = data[0];
-    await logAudit('LOGIN', `User successfully logged in as ${checkRole}.`);
-    showToast(`Logged in securely as ${currentUser.name}`, 'success', '✅');
-    finalizeLogin();
+    currentUser = data[0]; 
+    await logAudit('LOGIN', `User logged in as ${checkRole}.`);
+    showToast(`Logged in securely`, 'success'); finalizeLogin();
   }
 }
 
@@ -417,53 +435,53 @@ function openForgotPassword() { document.getElementById('forgot-modal').classLis
 function closeForgotModal() { document.getElementById('forgot-modal').classList.remove('open'); }
 
 async function requestPasswordReset(e) {
-  e.preventDefault();
-  if(!supabaseClient) return;
+  e.preventDefault(); if(!supabaseClient) return;
   resetEmailMemory = document.getElementById('forgot-email').value;
   let {data, error} = await supabaseClient.from('app_users').select('name').eq('email', resetEmailMemory);
-  if(error || data.length === 0) { showToast("Email not found in our system.", "warning", "⚠️"); return; }
+  if(error || data.length === 0) return showToast("Email not found.", "warning");
   
   resetOTPMemory = Math.floor(1000 + Math.random() * 9000).toString();
-  dispatchEmail(resetEmailMemory, data[0].name, "Password Reset OTP", `You requested a password reset. Your secure 4-digit OTP is: ${resetOTPMemory}`);
+  dispatchEmail(resetEmailMemory, data[0].name, "Password Reset OTP", `Your reset OTP is: ${resetOTPMemory}`);
   
-  showToast("Reset OTP sent to your email!", "primary", "📧");
+  showToast("Reset OTP sent!", "primary");
   document.getElementById('forgot-step-1').classList.add('hidden');
   document.getElementById('forgot-step-2').classList.remove('hidden');
 }
 
 async function verifyResetOTP(e) {
-  e.preventDefault();
-  if(!supabaseClient) return;
-  const enteredOTP = document.getElementById('forgot-otp').value;
+  e.preventDefault(); if(!supabaseClient) return;
+  if(document.getElementById('forgot-otp').value !== resetOTPMemory) return showToast("Incorrect OTP.", "warning");
   const newPwd = document.getElementById('forgot-new-pwd').value;
-  if(enteredOTP !== resetOTPMemory) { showToast("Incorrect OTP.", "warning", "❌"); return; }
-  
   await supabaseClient.from('app_users').update({ password: newPwd }).eq('email', resetEmailMemory);
-  showToast("Password Reset Successful! Please log in.", "success", "🔐");
-  closeForgotModal();
+  showToast("Password Reset Successful!", "success"); closeForgotModal();
   document.getElementById('forgot-step-1').classList.remove('hidden'); document.getElementById('forgot-step-2').classList.add('hidden');
 }
 
-function finalizeLogin() {
+function finalizeLogin() { 
   sessionStorage.setItem('civisync_user', JSON.stringify(currentUser)); 
-  applyLoginUI();
-  navigate(currentUser.role === 'citizen' ? 'track' : 'admin');
+  applyLoginUI(); 
+  navigate(currentUser.role === 'citizen' ? 'track' : 'admin'); 
+}
+
+function logout() { 
+  sessionStorage.removeItem('civisync_user'); 
+  location.reload(); 
 }
 
 function applyLoginUI() {
-  document.getElementById('btn-auth').classList.add('hidden');
+  document.getElementById('btn-auth').classList.add('hidden'); 
   document.getElementById('user-menu-container').classList.remove('hidden');
   document.getElementById('avatar-initials').innerText = currentUser.name.charAt(0).toUpperCase();
-  document.getElementById('drop-name').innerText = currentUser.name;
+  document.getElementById('drop-name').innerText = currentUser.name; 
   document.getElementById('drop-email').innerText = currentUser.email;
-
+  
   document.querySelectorAll('.auth-req').forEach(el => el.classList.remove('hidden'));
 
   if(currentUser.role === 'citizen') { 
     document.getElementById('user-points').classList.remove('hidden'); document.getElementById('pts-val').innerText = currentUser.points; 
-    ['nav-admin', 'nav-gov', 'nav-budget', 'nav-integrations', 'nav-superadmin'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    ['nav-admin', 'nav-gov', 'nav-budget', 'nav-superadmin', 'nav-analytics'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
   } else if(currentUser.role === 'admin') { 
-    ['nav-points', 'nav-gov', 'nav-leaderboard', 'nav-ngo', 'nav-integrations', 'nav-superadmin', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    ['nav-points', 'nav-gov', 'nav-leaderboard', 'nav-ngo', 'nav-superadmin', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
   } else if(currentUser.role === 'gov') {
     ['nav-points', 'nav-admin', 'nav-leaderboard', 'nav-ngo', 'nav-superadmin', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
     document.getElementById('gov-logged-role').innerText = currentUser.name;
@@ -472,19 +490,15 @@ function applyLoginUI() {
   }
 }
 
-async function logout() { 
-  if(currentUser) await logAudit('LOGOUT', 'User securely logged out.');
-  sessionStorage.removeItem('civisync_user');
-  currentUser = null; location.reload(); 
-}
-
 /* ==========================================================================
-   8. NAVIGATION ROUTER
+   9. NAVIGATION ROUTER
    ========================================================================== */
 function updateLeaderboard() {
   if(currentUser) {
     const elUser = document.getElementById('lb-current-user'); const elIss = document.getElementById('lb-current-issues'); const elPts = document.getElementById('lb-current-points');
-    if(elUser) elUser.innerText = currentUser.name + " (You)"; if(elIss) elIss.innerText = currentUser.reported + currentUser.volunteered; if(elPts) elPts.innerText = currentUser.points;
+    if(elUser) elUser.innerText = currentUser.name + " (You)"; 
+    if(elIss) elIss.innerText = (currentUser.reported || 0) + (currentUser.volunteered || 0); 
+    if(elPts) elPts.innerText = currentUser.points;
   }
 }
 
@@ -502,6 +516,7 @@ async function reRenderAllActive() {
 }
 
 async function navigate(viewId) {
+  showLoader();
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const targetView = document.getElementById(`view-${viewId}`); if(targetView) targetView.classList.add('active');
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -521,18 +536,34 @@ async function navigate(viewId) {
   if(viewId === 'points') await renderPointsHistory();
 
   if(viewId === 'profile' && currentUser) {
-    document.getElementById('prof-name').innerText = currentUser.name; document.getElementById('prof-email').innerText = currentUser.email; document.getElementById('prof-avatar').innerText = currentUser.name.charAt(0).toUpperCase(); document.getElementById('prof-pts').innerText = currentUser.points; document.getElementById('prof-reported').innerText = currentUser.reported; document.getElementById('prof-vol').innerText = currentUser.volunteered; document.getElementById('prof-role-badge').innerText = currentUser.role.toUpperCase();
+    document.getElementById('prof-name').innerText = currentUser.name; 
+    document.getElementById('prof-email').innerText = currentUser.email; 
+    document.getElementById('prof-avatar').innerText = currentUser.name.charAt(0).toUpperCase(); 
+    document.getElementById('prof-pts').innerText = currentUser.points; 
+    document.getElementById('prof-reported').innerText = currentUser.reported || 0; 
+    document.getElementById('prof-vol').innerText = currentUser.volunteered || 0; 
+    document.getElementById('prof-role-badge').innerText = currentUser.role.toUpperCase();
+    document.getElementById('prof-phone').innerText = currentUser.phone || "No phone added";
+    document.getElementById('prof-bio').innerText = currentUser.bio || "No bio added yet.";
     if(currentUser.points >= 500) { const bc = document.getElementById('badge-container'); if(bc) bc.classList.remove('hidden'); }
   }
+  
+  if(viewId === 'settings' && currentUser) {
+    document.getElementById('set-phone').value = currentUser.phone || "";
+    document.getElementById('set-bio').value = currentUser.bio || "";
+  }
+  
   window.scrollTo(0,0);
+  setTimeout(hideLoader, 500);
 }
 
 function checkAuthAndGo(viewId) { 
-  if(!currentUser || currentUser.role !== 'citizen') { showToast("Please log in to access this feature.", "warning", "🔒"); navigate('auth'); switchAuthTab('citizen'); } else { navigate(viewId); }
+  if(!currentUser || currentUser.role !== 'citizen') { showToast("Please log in to access this feature.", "warning", "🔒"); navigate('auth'); switchAuthTab('citizen'); } 
+  else { navigate(viewId); }
 }
 
 /* ==========================================================================
-   9. 3-STEP ANIMATED REPORT ISSUES
+   10. 3-STEP REPORT UPLOAD WIZARD
    ========================================================================== */
 function nextReportStep(targetStep) {
   document.querySelectorAll('.form-step').forEach(el => el.classList.add('hidden'));
@@ -603,6 +634,7 @@ function triggerAICategorization() {
 async function submitReport(e) {
   e.preventDefault();
   if(!supabaseClient) return alert("Database not connected.");
+  showLoader();
   const cat = document.getElementById('repCat').value; const desc = document.getElementById('repDesc').value.toLowerCase();
   const routing = {'Pothole':'Public Works', 'Water Leak':'Water Department', 'Electrical':'Electrical', 'Garbage':'Sanitation', 'Drainage':'Public Works', 'Traffic':'Traffic'};
   
@@ -612,18 +644,13 @@ async function submitReport(e) {
 
   const newId = `ISS00${Math.floor(Math.random()*900)+100}`;
   const issue = { 
-    id: newId, title: document.getElementById('repTitle').value, category: cat, desc: document.getElementById('repDesc').value, location: document.getElementById('repLoc').value, priority: calcPrio, status: 'pending', created: new Date().toISOString(), daysPending: 0, escalationLevel: 0, upvotes: 0, dept: routing[cat] || 'General', img: currentFileBase64, lat: 31.63 + (Math.random()*0.02 - 0.01), lng: 74.87 + (Math.random()*0.02 - 0.01), budget: 'Pending Budget Constraint', tempAction: '', volunteers: 0, schedule: 'Awaiting Assessment', history: [{stat:'pending | Pending Budget Constraint', date:new Date().toISOString(), hash:createHash()}], timeline: [{title: 'Complaint Submitted', date: new Date().toISOString(), type:'active'}], isOverdue: false
+    id: newId, title: document.getElementById('repTitle').value, category: cat, desc: document.getElementById('repDesc').value, location: document.getElementById('repLoc').value, priority: calcPrio, status: 'pending', created: new Date().toISOString(), daysPending: 0, escalationLevel: 0, upvotes: 0, dept: routing[cat] || 'General', img: currentFileBase64, lat: 31.63 + (Math.random()*0.02 - 0.01), lng: 74.87 + (Math.random()*0.02 - 0.01), budget: 'Pending Budget Constraint', tempAction: '', volunteers: 0, schedule: 'Awaiting Assessment', timeline: [{title: 'Complaint Submitted', date: new Date().toISOString(), type:'active'}]
   };
   
   try {
-    if(!navigator.onLine) {
-      let q = JSON.parse(localStorage.getItem('civisync_offline_queue') || '[]'); q.push(issue); localStorage.setItem('civisync_offline_queue', JSON.stringify(q));
-      showToast("Saved offline. Will sync when connected.", 'warning', '📡');
-    } else { 
-      const { error } = await supabaseClient.from('issues').insert([issue]);
-      if(error) throw error;
-      await logAudit('REPORT_CREATED', `Created issue ${newId}.`);
-    }
+    const { error } = await supabaseClient.from('issues').insert([issue]);
+    if(error) throw error;
+    await logAudit('REPORT_CREATED', `Created issue ${newId}.`);
 
     await updateUserStats(10, 1, 0, 'Reported a Civic Issue'); 
     dispatchEmail(currentUser.email, currentUser.name, "Issue Report Confirmation", `Your issue "${issue.title}" has been successfully logged. Tracking ID: ${issue.id}. You earned 10 Points!`);
@@ -631,17 +658,19 @@ async function submitReport(e) {
     e.target.reset(); currentFileBase64 = 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'; 
     const stat = document.getElementById('uploadStatus'); if(stat) stat.innerText = '';
     
+    hideLoader();
     showToast(`Report published! AI Assigned Priority: ${calcPrio.toUpperCase()}`, 'success', '🚀');
     nextReportStep(1); 
     await runAutoEscalationEngine(); navigate('track');
   } catch (err) {
+    hideLoader();
     console.error(err);
     showToast('Failed to save report. Try again.', 'warning', '⚠️');
   }
 }
 
 /* ==========================================================================
-   10. TRACK ISSUES & MODALS
+   11. RENDER & TRACKING DASHBOARDS
    ========================================================================== */
 async function setTrackTab(tab, el) { trackTabActive = tab; document.querySelectorAll('.tab-pill').forEach(t=>t.classList.remove('active')); el.classList.add('active'); await renderTrack(); }
 
@@ -731,6 +760,9 @@ async function initDedicatedMap() {
   setTimeout(() => dedicatedMapInstance.invalidateSize(), 100);
 }
 
+/* ==========================================================================
+   12. MODALS & REPORT ACTIONS
+   ========================================================================== */
 async function openModal(id) {
   activeModalIssueId = id; let db = await getDB(); const iss = db.find(i => i.id === id); if(!iss) return;
   
@@ -785,16 +817,19 @@ async function openModal(id) {
 
 function closeModal() { const mOverlay = document.getElementById('modal'); if(mOverlay) mOverlay.classList.remove('open'); activeModalIssueId = null; }
 
-function openNGOForm() {
+function openNGOForm(id) {
   if(!currentUser || currentUser.role !== 'citizen') return showToast("Please login to volunteer or adopt.", "warning", "🔒");
+  if(id) activeModalIssueId = id;
   document.getElementById('ngo-modal').classList.add('open');
 }
+
 function closeNGOForm() { document.getElementById('ngo-modal').classList.remove('open'); }
 
 async function submitNGOForm(e) {
   e.preventDefault();
   closeNGOForm();
   showToast(`Sending Proposal to Municipal Authority...`, 'primary', '⏳');
+  showLoader();
   
   setTimeout(async () => {
     let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId); 
@@ -803,6 +838,7 @@ async function submitNGOForm(e) {
     await logAudit('NGO_PLEDGE', `Pledged support for Issue ${activeModalIssueId}.`);
     
     dispatchEmail(currentUser.email, currentUser.name, "NGO Proposal Sent", `Your proposal to adopt Issue ${activeModalIssueId} has been sent to the authorities. You earned 50 Points!`);
+    hideLoader();
     showToast(`Success! Proposal Email delivered to Authorities.`, 'success', '📧');
     const volEl = document.getElementById('mod-vol-count'); if(volEl) volEl.innerText = iss.volunteers + 5;
     await reRenderAllActive();
@@ -820,16 +856,19 @@ async function upvoteIssue() {
 }
 
 async function manualEscalate() {
+  showLoader();
   let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
   let newTimeline = [...iss.timeline, {title: 'Citizen Triggered Manual Escalation', date: new Date().toISOString(), type:'escalated'}];
   await updateDB(activeModalIssueId, { timeline: newTimeline, escalationLevel: Math.max(iss.escalationLevel, 1) });
   await logAudit('ESCALATE_MANUAL', `Manually escalated Issue ${activeModalIssueId}.`);
   dispatchEmail(currentUser.email, currentUser.name, "Escalation Request Received", `Your request to escalate Issue ${activeModalIssueId} has been sent to the Ward Officer.`);
+  hideLoader();
   showToast('Escalation Request emailed to Ward Officer.', 'success', '📧');
   closeModal(); await runAutoEscalationEngine(); await renderTrack();
 }
 
 async function adminSaveStatus() {
+  showLoader();
   const sStat = document.getElementById('admin-sel-stat'); const sBud = document.getElementById('admin-sel-budget');
   if(!sStat) return;
   const s = sStat.value; const b = sBud ? sBud.value : 'Funded';
@@ -837,12 +876,13 @@ async function adminSaveStatus() {
   let newTimeline = [...iss.timeline, {title: `Status updated to: ${s.toUpperCase()}`, date: new Date().toISOString(), type:'active'}];
   await updateDB(activeModalIssueId, { status: s, budget: b, timeline: newTimeline });
   await logAudit('STATUS_CHANGE', `Changed Issue ${activeModalIssueId} status to ${s}.`);
+  hideLoader();
   showToast(`Updates successfully saved. Notifications dispatched.`, 'success', '✅');
   closeModal(); await reRenderAllActive();
 }
 
 /* ==========================================================================
-   11. ADMIN DASHBOARD & PDF GENERATION
+   13. ADMIN, NGO, BUDGET & ANALYTICS PANELS
    ========================================================================== */
 function generatePDFReport() {
   const element = document.getElementById('pdf-content'); const tbody = document.getElementById('pdf-table-body');
@@ -882,9 +922,6 @@ async function renderAdmin() {
   if(admTab) admTab.innerHTML = db.map(i => `<tr><td><span class="table-id">${i.id}</span></td><td class="font-medium">${i.title}</td><td>${i.budget.includes('Pending') ? `<span style="color:var(--danger); font-weight:600;">${i.budget}</span>` : i.budget}</td><td>${getBadgeHTML('status', i.status)}</td><td><button type="button" class="btn btn-outline text-xs" style="position:relative; z-index:20; cursor:pointer;" onclick="openModal('${i.id}'); event.stopPropagation();">View / Manage</button></td></tr>`).join('');
 }
 
-/* ==========================================================================
-   12. EXPANDED ANALYTICS CHARTS 
-   ========================================================================== */
 async function renderAnalytics() {
   const db = await getDB(); const total = db.length || 1; const pen = db.filter(i => i.status === 'pending').length; const prog = db.filter(i => i.status === 'in progress').length; const res = db.filter(i => i.status === 'resolved').length; const hi = db.filter(i => i.priority === 'high').length; const med = db.filter(i => i.priority === 'medium').length; const low = db.filter(i => i.priority === 'low').length;
   
@@ -908,9 +945,6 @@ async function renderAnalytics() {
   }
 }
 
-/* ==========================================================================
-   13. MISSING RENDER FUNCTIONS (NGO, BUDGET, GOVT, POINTS, ETC.)
-   ========================================================================== */
 async function renderPointsHistory() {
   const list = document.getElementById('points-history-list');
   if(!list || !currentUser || !supabaseClient) return;
@@ -918,7 +952,7 @@ async function renderPointsHistory() {
   if(error || !data || data.length === 0) { list.innerHTML = '<p class="text-muted">No points history yet.</p>'; return; }
   
   list.innerHTML = data.map(d => `
-    <div style="display:flex; justify-content:space-between; padding: 10px; background:var(--bg-surface); border:1px solid var(--border); border-radius:4px;">
+    <div style="display:flex; justify-content:space-between; padding: 10px; background:var(--bg-surface); border:1px solid var(--border); border-radius:4px; margin-bottom: 0.5rem;">
       <div><strong>${d.action}</strong><br><span class="text-xs text-muted">${new Date(d.created_at).toLocaleDateString()}</span></div>
       <strong style="color:${d.points_change > 0 ? 'var(--success)' : 'var(--danger)'};">${d.points_change > 0 ? '+' : ''}${d.points_change} pts</strong>
     </div>
@@ -942,7 +976,7 @@ async function renderNgo() {
       <div class="issue-card-content">
         <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><span class="text-xs text-muted">${i.id}</span><span class="badge badge-high">Unfunded</span></div>
         <h3 style="font-size:1.05rem; margin-bottom:0.5rem;">${i.title}</h3><p class="text-xs text-muted mb-2">📍 ${i.location}</p>
-        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:0.75rem; margin-top:auto;"><span class="text-xs text-purple font-medium">👥 ${i.volunteers} Volunteers</span><button class="btn text-xs" style="background:var(--purple); color:white; border-radius:50px;" onclick="openModal('${i.id}')">View</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:0.75rem; margin-top:auto;"><span class="text-xs text-purple font-medium">👥 ${i.volunteers} Volunteers</span><button class="btn text-xs" style="background:var(--purple); color:white; border-radius:50px;" onclick="openNGOForm('${i.id}')">View</button></div>
       </div>
     </div>`).join('');
 }
@@ -955,10 +989,12 @@ async function renderBudget() {
 }
 
 async function allocateFunds(id) {
+  showLoader();
   let db = await getDB(); const iss = db.find(i => i.id === id);
   let newTimeline = [...iss.timeline, {title: 'Funds Approved', date: new Date().toISOString(), type:'active'}];
   await updateDB(id, { budget: 'Funded', status: 'in progress', timeline: newTimeline });
   await logAudit('FUNDS_ALLOCATED', `Approved budget for Issue ${id}.`);
+  hideLoader();
   showToast(`Funding approved!`, 'success', '💰');
   await reRenderAllActive();
 }
@@ -999,17 +1035,4 @@ async function renderSuperAdmin() {
     if(logs.length === 0) logDiv.innerHTML = '<p style="color:#94a3b8;">No audit logs yet.</p>';
     else logDiv.innerHTML = logs.map(l => `<div style="background: rgba(255,255,255,0.05); padding: 1rem; border-left: 4px solid #10b981; border-radius: 4px; margin-bottom: 0.8rem;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><strong style="color:#10b981;">[${l.action}]</strong><span style="font-size:0.75rem; color:#94a3b8;">${new Date(l.created_at).toLocaleString()}</span></div><div style="font-size:0.85rem;">User: <strong>${l.user_email}</strong> (${l.role})</div><div style="font-size:0.85rem; color:#cbd5e1; margin-top:5px;">${l.details}</div></div>`).join('');
   }
-}
-async function renderNgo() {
-  let db = await getDB(); 
-  const cont = document.getElementById('ngo-issue-list'); 
-  if(!cont) return;
-  cont.innerHTML = db.filter(i=>i.budget.includes('Pending')).map(i => `
-    <div class="issue-card-clean" style="border-color:var(--purple);">
-      <div class="issue-img-wrapper"><img src="${i.img}"></div>
-      <div class="issue-card-content">
-        <h3>${i.title}</h3>
-        <button class="btn" style="background:var(--purple); color:white; width:100%; margin-top:10px;">Adopt Project</button>
-      </div>
-    </div>`).join('');
 }
