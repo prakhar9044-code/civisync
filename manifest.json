@@ -1,0 +1,21 @@
+{
+  "name": "CiviSync Smart City",
+  "short_name": "CiviSync",
+  "description": "Smart City Management & Civic Issue Reporting Platform.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "civisync-logo.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "civisync-logo.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
