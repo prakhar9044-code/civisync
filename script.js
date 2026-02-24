@@ -25,6 +25,7 @@ let currentUser = JSON.parse(sessionStorage.getItem('civisync_user')) || null;
 let trackTabActive = 'All'; 
 let mapInstance = null; 
 let dedicatedMapInstance = null; 
+let heatmapInstance = null; // NEW: Heatmap Instance
 let activeModalIssueId = null; 
 let charts = {}; 
 let truckTweens = [];
@@ -34,56 +35,68 @@ let pendingLoginEmail = "";
 let realGeneratedOTP = "";
 let resetEmailMemory = "";
 let resetOTPMemory = "";
+let deferredPrompt; // NEW: PWA Install Prompt
 
 /* ==========================================================================
-   3. GLOBAL LOADER ANIMATION
+   3. PWA INSTALL BANNER LOGIC (NEW)
+   ========================================================================== */
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const promptEl = document.getElementById('pwa-prompt');
+  if(promptEl) promptEl.classList.remove('hidden');
+});
+
+function closePWA() {
+  const promptEl = document.getElementById('pwa-prompt');
+  if(promptEl) promptEl.classList.add('hidden');
+}
+
+async function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('User accepted the App install');
+    }
+    deferredPrompt = null;
+  }
+  closePWA();
+}
+
+/* ==========================================================================
+   4. GLOBAL LOADER ANIMATION
    ========================================================================== */
 function showLoader() { 
   const loader = document.getElementById('global-loader');
-  if(loader) { 
-    loader.style.opacity = '1'; 
-    loader.style.pointerEvents = 'all'; 
-  }
+  if(loader) { loader.style.opacity = '1'; loader.style.pointerEvents = 'all'; }
 }
 
 function hideLoader() { 
   const loader = document.getElementById('global-loader');
-  if(loader) { 
-    loader.style.opacity = '0'; 
-    loader.style.pointerEvents = 'none'; 
-  }
+  if(loader) { loader.style.opacity = '0'; loader.style.pointerEvents = 'none'; }
 }
-
-// Hide loader initially after page loads
 setTimeout(hideLoader, 1500);
 
 /* ==========================================================================
-   4. SCROLL ANIMATIONS & FAQ LOGIC
+   5. SCROLL ANIMATIONS & FAQ LOGIC
    ========================================================================== */
 function initScrollAnimations() {
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('is-visible');
-      }
-    });
+    entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('is-visible'); });
   }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
 
-  document.querySelectorAll('.scroll-anim').forEach(el => {
-    observer.observe(el);
-  });
+  document.querySelectorAll('.scroll-anim').forEach(el => observer.observe(el));
 }
 
 function toggleFAQ(element) {
   const parentItem = element.parentElement;
-  document.querySelectorAll('.faq-item').forEach(item => {
-    if(item !== parentItem) item.classList.remove('active');
-  });
+  document.querySelectorAll('.faq-item').forEach(item => { if(item !== parentItem) item.classList.remove('active'); });
   parentItem.classList.toggle('active');
 }
 
 /* ==========================================================================
-   5. OAUTH SESSION CATCHER (FIXES VERCEL GOOGLE/FACEBOOK LOGIN)
+   6. OAUTH SESSION CATCHER
    ========================================================================== */
 if (supabaseClient) {
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
@@ -123,15 +136,13 @@ if (supabaseClient) {
 }
 
 /* ==========================================================================
-   6. LOCAL RULE-BASED ACTION CHATBOT 
+   7. LOCAL RULE-BASED ACTION CHATBOT 
    ========================================================================== */
 function toggleChat() { 
   const cw = document.getElementById('chat-window');
   if(cw) {
     cw.classList.toggle('hidden');
-    if(!cw.classList.contains('hidden') && typeof gsap !== 'undefined') {
-      gsap.fromTo(cw, {opacity:0, y:20}, {opacity:1, y:0, duration:0.3});
-    }
+    if(!cw.classList.contains('hidden') && typeof gsap !== 'undefined') gsap.fromTo(cw, {opacity:0, y:20}, {opacity:1, y:0, duration:0.3});
   }
 }
 
@@ -180,7 +191,7 @@ function sendLocalChat() {
 }
 
 /* ==========================================================================
-   7. CORE UI & UTILITIES
+   8. CORE UI & UTILITIES
    ========================================================================== */
 function showToast(message, type = 'primary', icon = '🔔') {
   const container = document.getElementById('toast-container');
@@ -202,11 +213,7 @@ function showToast(message, type = 'primary', icon = '🔔') {
 async function dispatchEmail(userEmail, userName, actionTitle, actionDetails) {
   try {
     await emailjs.send("service_0952wxc", "template_tes0o8g", { 
-      to_email: userEmail, 
-      name: userName, 
-      user_name: userName, 
-      action_title: actionTitle, 
-      action_details: actionDetails 
+      to_email: userEmail, name: userName, user_name: userName, action_title: actionTitle, action_details: actionDetails 
     });
   } catch (error) { console.error("Email Dispatch Failed:", error); }
 }
@@ -242,9 +249,7 @@ function triggerTypewriter() {
       if(text.charAt(idx) === '^') contentEl.innerHTML += "<br>"; 
       else contentEl.innerHTML += text.charAt(idx); 
       idx++; 
-    } else {
-      clearInterval(typeInterval); 
-    }
+    } else { clearInterval(typeInterval); }
   }, 50);
 }
 
@@ -266,7 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ==========================================================================
-   8. DB ABSTRACTIONS & SETTINGS SYNC
+   9. DB ABSTRACTIONS & SETTINGS SYNC
    ========================================================================== */
 async function getDB() { 
   if(!supabaseClient) return []; 
@@ -278,13 +283,11 @@ async function getDB() {
       ]);
       
       if (error) {
-          console.warn("getDB Anti-Freeze triggered. Returning empty array to prevent website crash.");
+          console.warn("getDB Anti-Freeze triggered.");
           return []; 
       }
       return data || []; 
-  } catch (err) {
-      return [];
-  }
+  } catch (err) { return []; }
 }
 
 async function updateDB(id, updates) { 
@@ -311,11 +314,10 @@ async function updateUserStats(pointsAdd, reportedAdd, volAdd, actionName) {
   if(pointsAdd > 0) {
     await logPointsHistory(actionName, pointsAdd);
     showToast(`You earned ${pointsAdd} Civic Points!`, 'success', '⭐');
-    dispatchEmail(currentUser.email, currentUser.name, `Points Earned: ${actionName}`, `Congratulations! You just earned ${pointsAdd} Civic Points for: ${actionName}.`);
+    dispatchEmail(currentUser.email, currentUser.name, `Points Earned: ${actionName}`, `Congratulations! You just earned ${pointsAdd} Civic Points.`);
   } else if (pointsAdd < 0) {
     await logPointsHistory(actionName, pointsAdd);
     showToast(`Redeemed ${Math.abs(pointsAdd)} Civic Points!`, 'primary', '🎁');
-    dispatchEmail(currentUser.email, currentUser.name, `Reward Redeemed: ${actionName}`, `You successfully used ${Math.abs(pointsAdd)} points.`);
   }
   const pts = document.getElementById('pts-val'); if(pts) pts.innerText = currentUser.points;
   const mPts = document.getElementById('manage-pts'); if(mPts) mPts.innerText = currentUser.points;
@@ -373,7 +375,7 @@ async function runAutoEscalationEngine() {
 }
 
 /* ==========================================================================
-   9. AUTHENTICATION & OTP
+   10. AUTHENTICATION & OAUTH
    ========================================================================== */
 function togglePassword(inputId) {
   const input = document.getElementById(inputId);
@@ -389,13 +391,8 @@ function switchAuthTab(type) {
   ['cit', 'adm', 'gov', 'super'].forEach(t => {
     const btn = document.getElementById(`tab-${t}`);
     if(btn) { 
-      if(t === type) { 
-        btn.style.borderBottomColor='var(--primary)'; 
-        btn.style.color='var(--primary)'; 
-      } else { 
-        btn.style.borderBottomColor='transparent'; 
-        btn.style.color='var(--text-secondary)'; 
-      } 
+      if(t === type) { btn.style.borderBottomColor='var(--primary)'; btn.style.color='var(--primary)'; } 
+      else { btn.style.borderBottomColor='transparent'; btn.style.color='var(--text-secondary)'; } 
     }
   });
 }
@@ -407,45 +404,45 @@ function toggleCitAuth(action) {
   document.getElementById('btn-reg-cit').style.background = action === 'register' ? 'var(--bg-surface)' : 'transparent';
 }
 
-/* --- SOCIAL LOGIN (REAL OAUTH MODE) --- */
+/* --- SOCIAL LOGIN (HYBRID MODE: REAL GOOGLE, DEMO OTHERS) --- */
 async function socialLogin(provider) {
   if(!supabaseClient) return showToast("Database not connected.", "warning", "🚫");
-  
-  showLoader();
-  showToast(`Redirecting to ${provider}...`, 'primary', '🔗');
-  
-  try {
-    // This calls the REAL Supabase API and redirects the user to Google/Facebook/LinkedIn
-    const { data, error } = await supabaseClient.auth.signInWithOAuth({ 
-      provider: provider, 
-      options: { 
-        redirectTo: window.location.origin 
-      } 
-    });
-    
-    if(error) { 
-        hideLoader(); 
-        alert("OAuth Error: " + error.message); 
-    }
-    // Note: The browser will leave your site, go to Google, and come back.
-    // When it comes back, the `onAuthStateChange` listener at the top of this file will catch the real user!
-    
-  } catch (err) {
-    hideLoader();
-    alert("Social Login Failed: " + err.message);
+
+  if (provider === 'google') {
+    showLoader();
+    showToast(`Redirecting to Google...`, 'primary', '🔗');
+    try {
+      const { data, error } = await supabaseClient.auth.signInWithOAuth({ 
+        provider: provider, 
+        options: { redirectTo: window.location.origin } 
+      });
+      if(error) { hideLoader(); alert("OAuth Error: " + error.message); }
+    } catch (err) { hideLoader(); alert("Social Login Failed: " + err.message); }
+  } else {
+    showLoader();
+    let providerName = provider === 'linkedin_oidc' ? 'LinkedIn' : provider.charAt(0).toUpperCase() + provider.slice(1);
+    showToast(`Connecting to ${providerName}...`, 'primary', '🔗');
+
+    setTimeout(() => {
+      currentUser = { id: `oauth-${provider}-123`, name: `Prakhar (${providerName})`, email: `prakhar@${provider}.com`, role: 'citizen', points: 250, reported: 1, volunteered: 0, bio: `Imported securely from ${providerName}.` };
+      sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
+      applyLoginUI();
+      navigate('track');
+      showToast(`Successfully connected via ${providerName}!`, 'success', '✅');
+      hideLoader();
+    }, 1800);
   }
 }
+
 /* --- LOGIN OTP --- */
 async function handleCitizenOTPFlow(e) {
   e.preventDefault(); 
-  
   pendingLoginEmail = document.getElementById('cit-login-identifier').value.trim();
   if(!pendingLoginEmail) return showToast("Please enter a valid email.", "warning");
 
   showLoader();
   try {
     const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
-    
     let {data, error} = await Promise.race([
         supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail).eq('role', 'citizen'),
         timeoutPromise
@@ -454,42 +451,23 @@ async function handleCitizenOTPFlow(e) {
     if (error && error.message === "TIMEOUT_FREEZE") {
         let genName = pendingLoginEmail.split('@')[0];
         genName = genName.charAt(0).toUpperCase() + genName.slice(1);
-        console.warn("Database slow. Generating name dynamically.");
-        error = null; 
-        data = [{ name: genName, email: pendingLoginEmail, role: 'citizen', points: 150, reported: 0, volunteered: 0 }];
-    } else if(error) {
-        hideLoader(); return alert("Database Error: " + error.message);
-    }
+        error = null; data = [{ name: genName, email: pendingLoginEmail, role: 'citizen', points: 150, reported: 0, volunteered: 0 }];
+    } else if(error) { hideLoader(); return alert("Database Error: " + error.message); }
     
-    if(!data || data.length === 0) {
-        hideLoader(); return showToast("Email not found! Please go to the Register tab.", "warning", "⚠️");
-    }
+    if(!data || data.length === 0) { hideLoader(); return showToast("Email not found! Please register.", "warning", "⚠️"); }
 
     realGeneratedOTP = Math.floor(1000 + Math.random() * 9000).toString();
-    console.log("=====================================");
     console.log("🔐 YOUR LOGIN OTP IS:", realGeneratedOTP);
-    console.log("=====================================");
 
     document.getElementById('cit-login-step-1').classList.add('hidden'); 
     document.getElementById('cit-login-step-2').classList.remove('hidden');
     hideLoader();
 
-    emailjs.send("service_0952wxc", "template_tes0o8g", { 
-      to_email: pendingLoginEmail, 
-      name: data[0].name, 
-      user_name: data[0].name, 
-      action_title: "Secure Login OTP", 
-      action_details: `Your Login OTP is: ${realGeneratedOTP}` 
-    }).then(() => {
+    emailjs.send("service_0952wxc", "template_tes0o8g", { to_email: pendingLoginEmail, name: data[0].name, user_name: data[0].name, action_title: "Secure Login OTP", action_details: `Your Login OTP is: ${realGeneratedOTP}` }).then(() => {
       showToast(`OTP sent to your email!`, 'success', '📧'); 
-    }).catch((emailErr) => {
-      console.error("EmailJS Error:", emailErr);
-      alert(`[SYSTEM NOTICE] Email failed to send.\n\nYour OTP is: ${realGeneratedOTP}`);
-    });
+    }).catch(() => { alert(`Email failed to send.\nYour OTP is: ${realGeneratedOTP}`); });
 
-  } catch (err) {
-    hideLoader(); alert("CRITICAL ERROR: " + err.message);
-  }
+  } catch (err) { hideLoader(); alert("CRITICAL ERROR: " + err.message); }
 }
 
 async function verifyCitizenOTP() {
@@ -499,41 +477,23 @@ async function verifyCitizenOTP() {
   showLoader();
   try {
     const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2000));
-    let {data, error} = await Promise.race([
-        supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail),
-        timeoutPromise
-    ]);
+    let {data, error} = await Promise.race([supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail), timeoutPromise]);
 
     if (error && error.message === "TIMEOUT_FREEZE") {
-        let genName = pendingLoginEmail.split('@')[0];
-        genName = genName.charAt(0).toUpperCase() + genName.slice(1);
+        let genName = pendingLoginEmail.split('@')[0]; genName = genName.charAt(0).toUpperCase() + genName.slice(1);
         data = [{ id: "offline-user", name: genName, email: pendingLoginEmail, role: 'citizen', points: 150 }];
         error = null;
     }
 
-    if(error || !data || data.length === 0) throw new Error("Database fetch error.");
-
     currentUser = data[0]; 
     sessionStorage.setItem('civisync_user', JSON.stringify(currentUser)); 
-    
-    applyLoginUI();
-    navigate('track');
-    showToast('Login Successful!', 'success', '✅');
+    applyLoginUI(); navigate('track'); showToast('Login Successful!', 'success', '✅');
 
-  } catch (err) {
-    hideLoader(); alert("VERIFICATION ERROR: " + err.message);
-  }
+  } catch (err) { hideLoader(); alert("VERIFICATION ERROR: " + err.message); }
 }
 
-function reEnterEmail() {
-  document.getElementById('cit-login-step-2').classList.add('hidden');
-  document.getElementById('cit-login-step-1').classList.remove('hidden');
-}
-
-function resendOTP() {
-  showToast('Resending OTP...', 'primary', '🔄');
-  document.getElementById('cit-login-step-1').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-}
+function reEnterEmail() { document.getElementById('cit-login-step-2').classList.add('hidden'); document.getElementById('cit-login-step-1').classList.remove('hidden'); }
+function resendOTP() { showToast('Resending OTP...', 'primary', '🔄'); document.getElementById('cit-login-step-1').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); }
 
 async function handleAuth(e, type) {
   if(e) e.preventDefault(); if(!supabaseClient) return; 
@@ -561,16 +521,11 @@ async function handleAuth(e, type) {
         email = inputs[0].value; password = inputs[1].value; 
         let checkRole = type === 'citizen_pwd' ? 'citizen' : type;
         
-        let {data, error} = await Promise.race([
-            supabaseClient.from('app_users').select('*').eq('email', email).eq('password', password).eq('role', checkRole),
-            timeoutPromise
-        ]);
+        let {data, error} = await Promise.race([supabaseClient.from('app_users').select('*').eq('email', email).eq('password', password).eq('role', checkRole), timeoutPromise]);
 
         if (error && error.message === "TIMEOUT_FREEZE") {
-            let genName = email.split('@')[0];
-            genName = genName.charAt(0).toUpperCase() + genName.slice(1);
-            data = [{ id: "offline-user", name: genName, email: email, role: checkRole, points: 150 }];
-            error = null;
+            let genName = email.split('@')[0]; genName = genName.charAt(0).toUpperCase() + genName.slice(1);
+            data = [{ id: "offline-user", name: genName, email: email, role: checkRole, points: 150 }]; error = null;
         }
 
         hideLoader();
@@ -580,120 +535,46 @@ async function handleAuth(e, type) {
         await logAudit('LOGIN', `User logged in as ${checkRole}.`);
         showToast(`Logged in securely`, 'success'); finalizeLogin();
       }
-  } catch (err) {
-      hideLoader(); alert("AUTH ERROR: " + err.message);
-  }
+  } catch (err) { hideLoader(); alert("AUTH ERROR: " + err.message); }
 }
 
-/* --- FORGOT PASSWORD UI & LOGIC --- */
-function openForgotPassword() { 
-  document.getElementById('forgot-modal').classList.add('open'); 
-}
-
-function closeForgotModal() { 
-  document.getElementById('forgot-modal').classList.remove('open'); 
-  document.getElementById('forgot-step-1').classList.remove('hidden');
-  document.getElementById('forgot-step-2').classList.add('hidden');
-}
+/* --- FORGOT PASSWORD --- */
+function openForgotPassword() { document.getElementById('forgot-modal').classList.add('open'); }
+function closeForgotModal() { document.getElementById('forgot-modal').classList.remove('open'); document.getElementById('forgot-step-1').classList.remove('hidden'); document.getElementById('forgot-step-2').classList.add('hidden'); }
 
 async function requestPasswordReset(e) {
-  e.preventDefault(); 
-  if(!supabaseClient) return;
-  
-  resetEmailMemory = document.getElementById('forgot-email').value.trim();
-  showLoader();
+  e.preventDefault(); if(!supabaseClient) return;
+  resetEmailMemory = document.getElementById('forgot-email').value.trim(); showLoader();
 
   try {
     const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
-    let {data, error} = await Promise.race([
-        supabaseClient.from('app_users').select('name').eq('email', resetEmailMemory),
-        timeoutPromise
-    ]);
+    let {data, error} = await Promise.race([supabaseClient.from('app_users').select('name').eq('email', resetEmailMemory), timeoutPromise]);
 
-    if(error && error.message === "TIMEOUT_FREEZE") {
-        let genName = resetEmailMemory.split('@')[0];
-        genName = genName.charAt(0).toUpperCase() + genName.slice(1);
-        data = [{ name: genName }];
-        error = null;
-    }
-
-    if(error || !data || data.length === 0) {
-        hideLoader(); return showToast("Email not found in our database.", "warning");
-    }
+    if(error && error.message === "TIMEOUT_FREEZE") { let genName = resetEmailMemory.split('@')[0]; data = [{ name: genName }]; error = null; }
+    if(error || !data || data.length === 0) { hideLoader(); return showToast("Email not found in our database.", "warning"); }
     
     resetOTPMemory = Math.floor(1000 + Math.random() * 9000).toString();
-    console.log("=====================================");
-    console.log("🔐 YOUR RESET OTP IS:", resetOTPMemory);
-    console.log("=====================================");
+    document.getElementById('forgot-step-1').classList.add('hidden'); document.getElementById('forgot-step-2').classList.remove('hidden'); hideLoader();
 
-    document.getElementById('forgot-step-1').classList.add('hidden');
-    document.getElementById('forgot-step-2').classList.remove('hidden');
-    hideLoader();
-
-    emailjs.send("service_0952wxc", "template_tes0o8g", { 
-      to_email: resetEmailMemory, 
-      name: data[0].name, 
-      user_name: data[0].name, 
-      action_title: "Password Reset OTP", 
-      action_details: `Your secure reset OTP is: ${resetOTPMemory}` 
-    }).then(() => {
-      showToast("Reset OTP sent to your email!", "primary", "📧");
-    }).catch((emailErr) => {
-      console.error("EmailJS Error:", emailErr);
-      alert(`[SYSTEM NOTICE] Email failed to send.\n\nYour Reset OTP is: ${resetOTPMemory}`);
-    });
-
-  } catch (err) {
-    hideLoader(); alert("CRITICAL ERROR: " + err.message);
-  }
+    emailjs.send("service_0952wxc", "template_tes0o8g", { to_email: resetEmailMemory, name: data[0].name, user_name: data[0].name, action_title: "Password Reset OTP", action_details: `Your reset OTP is: ${resetOTPMemory}` }).then(() => { showToast("Reset OTP sent!", "primary", "📧"); }).catch(() => { alert(`Your Reset OTP is: ${resetOTPMemory}`); });
+  } catch (err) { hideLoader(); alert("CRITICAL ERROR: " + err.message); }
 }
 
 async function verifyResetOTP(e) {
-  e.preventDefault(); 
-  if(!supabaseClient) return;
-  
-  if(document.getElementById('forgot-otp').value.trim() !== resetOTPMemory) {
-      return showToast("Incorrect OTP.", "warning", "❌");
-  }
-
+  e.preventDefault(); if(!supabaseClient) return;
+  if(document.getElementById('forgot-otp').value.trim() !== resetOTPMemory) { return showToast("Incorrect OTP.", "warning", "❌"); }
   showLoader();
   try {
     const newPwd = document.getElementById('forgot-new-pwd').value;
-    
     const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
-    let { error } = await Promise.race([
-        supabaseClient.from('app_users').update({ password: newPwd }).eq('email', resetEmailMemory),
-        timeoutPromise
-    ]);
-    
-    if (error && error.message === "TIMEOUT_FREEZE") {
-        console.warn("Bypassing DB save due to freeze");
-        error = null;
-    } else if(error) {
-        hideLoader();
-        return alert("Failed to reset password: " + error.message);
-    }
-
-    hideLoader();
-    showToast("Password Reset Successful! You can now log in.", "success", "✅"); 
-    closeForgotModal();
-
-  } catch (err) {
-    hideLoader();
-    alert("VERIFICATION ERROR: " + err.message);
-  }
+    let { error } = await Promise.race([supabaseClient.from('app_users').update({ password: newPwd }).eq('email', resetEmailMemory), timeoutPromise]);
+    if(error && error.message !== "TIMEOUT_FREEZE") { hideLoader(); return alert("Failed to reset password: " + error.message); }
+    hideLoader(); showToast("Password Reset Successful! You can now log in.", "success", "✅"); closeForgotModal();
+  } catch (err) { hideLoader(); alert("VERIFICATION ERROR: " + err.message); }
 }
 
-function finalizeLogin() { 
-  sessionStorage.setItem('civisync_user', JSON.stringify(currentUser)); 
-  applyLoginUI(); 
-  navigate(currentUser.role === 'citizen' ? 'track' : 'admin'); 
-}
-
-function logout() { 
-  sessionStorage.removeItem('civisync_user'); 
-  location.reload(); 
-}
+function finalizeLogin() { sessionStorage.setItem('civisync_user', JSON.stringify(currentUser)); applyLoginUI(); navigate(currentUser.role === 'citizen' ? 'track' : 'admin'); }
+function logout() { sessionStorage.removeItem('civisync_user'); location.reload(); }
 
 function applyLoginUI() {
   document.getElementById('btn-auth').classList.add('hidden'); 
@@ -701,16 +582,15 @@ function applyLoginUI() {
   document.getElementById('avatar-initials').innerText = currentUser.name.charAt(0).toUpperCase();
   document.getElementById('drop-name').innerText = currentUser.name; 
   document.getElementById('drop-email').innerText = currentUser.email;
-  
   document.querySelectorAll('.auth-req').forEach(el => el.classList.remove('hidden'));
 
   if(currentUser.role === 'citizen') { 
     document.getElementById('user-points').classList.remove('hidden'); document.getElementById('pts-val').innerText = currentUser.points; 
-    ['nav-admin', 'nav-gov', 'nav-budget', 'nav-superadmin', 'nav-analytics'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    ['nav-admin', 'nav-gov', 'nav-budget', 'nav-superadmin', 'nav-analytics', 'nav-integrations'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
   } else if(currentUser.role === 'admin') { 
     ['nav-points', 'nav-gov', 'nav-leaderboard', 'nav-ngo', 'nav-superadmin', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
   } else if(currentUser.role === 'gov') {
-    ['nav-points', 'nav-admin', 'nav-leaderboard', 'nav-ngo', 'nav-superadmin', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    ['nav-points', 'nav-admin', 'nav-leaderboard', 'nav-ngo', 'nav-superadmin', 'nav-integrations', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
     document.getElementById('gov-logged-role').innerText = currentUser.name;
   } else if(currentUser.role === 'super') {
     ['nav-points', 'nav-leaderboard', 'nav-ngo', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
@@ -718,7 +598,7 @@ function applyLoginUI() {
 }
 
 /* ==========================================================================
-   10. NAVIGATION ROUTER
+   11. NAVIGATION ROUTER
    ========================================================================== */
 function updateLeaderboard() {
   if(currentUser) {
@@ -744,7 +624,6 @@ async function reRenderAllActive() {
 
 async function navigate(viewId) {
   showLoader();
-  
   const loaderFailsafe = setTimeout(hideLoader, 2500);
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -780,19 +659,13 @@ async function navigate(viewId) {
     document.getElementById('prof-bio').innerText = currentUser.bio || "No bio added yet.";
     if(currentUser.points >= 500) { const bc = document.getElementById('badge-container'); if(bc) bc.classList.remove('hidden'); }
   }
-  
   if(viewId === 'settings' && currentUser) {
     document.getElementById('set-phone').value = currentUser.phone || "";
     document.getElementById('set-bio').value = currentUser.bio || "";
   }
   
   window.scrollTo(0,0);
-  
-  setTimeout(() => {
-    initScrollAnimations();
-    clearTimeout(loaderFailsafe); 
-    hideLoader();
-  }, 500);
+  setTimeout(() => { initScrollAnimations(); clearTimeout(loaderFailsafe); hideLoader(); }, 500);
 }
 
 function checkAuthAndGo(viewId) { 
@@ -801,28 +674,22 @@ function checkAuthAndGo(viewId) {
 }
 
 /* ==========================================================================
-   11. 3-STEP REPORT UPLOAD WIZARD
+   12. REPORT WIZARD
    ========================================================================== */
 function nextReportStep(targetStep) {
   document.querySelectorAll('.form-step').forEach(el => el.classList.add('hidden'));
   document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
-
-  const targetForm = document.getElementById(`form-step-${targetStep}`);
-  targetForm.classList.remove('hidden');
+  const targetForm = document.getElementById(`form-step-${targetStep}`); targetForm.classList.remove('hidden');
   document.getElementById(`step-${targetStep}-ind`).classList.add('active');
-
   if(typeof gsap !== 'undefined') gsap.fromTo(targetForm, { x: 50, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" });
 }
 
 function getLocationWithAnim() {
-  const btn = document.getElementById('btn-gps');
-  btn.innerHTML = "⏳ Scanning Satellites...";
+  const btn = document.getElementById('btn-gps'); btn.innerHTML = "⏳ Scanning...";
   if(typeof gsap !== 'undefined') gsap.to(btn, { scale: 0.95, duration: 0.3, yoyo: true, repeat: -1 });
-  
   if(navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => { 
-      const loc = document.getElementById('repLoc'); 
-      loc.value = `Lat: ${pos.coords.latitude.toFixed(4)} | Lng: ${pos.coords.longitude.toFixed(4)}`; 
+      document.getElementById('repLoc').value = `Lat: ${pos.coords.latitude.toFixed(4)} | Lng: ${pos.coords.longitude.toFixed(4)}`; 
       if(typeof gsap !== 'undefined') gsap.killTweensOf(btn);
       btn.style.transform = "scale(1)"; btn.innerHTML = "✅ Locked"; btn.style.background = "var(--success)"; btn.style.borderColor = "var(--success)";
     }, () => { if(typeof gsap !== 'undefined') gsap.killTweensOf(btn); btn.innerHTML = "❌ Failed"; }); 
@@ -837,8 +704,7 @@ function handleImageUpload(e) {
       const img = new Image();
       img.onload = function() {
         const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
-        const MAX_WIDTH = 600; const scaleSize = MAX_WIDTH / img.width;
-        canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
+        const scaleSize = 600 / img.width; canvas.width = 600; canvas.height = img.height * scaleSize;
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         currentFileBase64 = canvas.toDataURL('image/jpeg', 0.5);
         document.getElementById('uploadStatus').innerText="✓ Image compressed and ready";
@@ -853,7 +719,7 @@ function startDictation() {
   if(window.webkitSpeechRecognition) {
     const rec = new window.webkitSpeechRecognition(); rec.start(); 
     const b = document.getElementById('btnMic'); if(b) b.classList.add('recording');
-    rec.onresult = e => { const desc = document.getElementById('repDesc'); if(desc) desc.value += e.results[0][0].transcript; triggerAICategorization(); if(b) b.classList.remove('recording'); };
+    rec.onresult = e => { document.getElementById('repDesc').value += e.results[0][0].transcript; triggerAICategorization(); if(b) b.classList.remove('recording'); };
     rec.onerror = () => { alert("Speech recognition failed."); if(b) b.classList.remove('recording'); };
   }
 }
@@ -870,51 +736,40 @@ function triggerAICategorization() {
 }
 
 async function submitReport(e) {
-  e.preventDefault();
-  if(!supabaseClient) return alert("Database not connected.");
+  e.preventDefault(); if(!supabaseClient) return alert("Database not connected.");
   showLoader();
   const cat = document.getElementById('repCat').value; const desc = document.getElementById('repDesc').value.toLowerCase();
   const routing = {'Pothole':'Public Works', 'Water Leak':'Water Department', 'Electrical':'Electrical', 'Garbage':'Sanitation', 'Drainage':'Public Works', 'Traffic':'Traffic'};
-  
   let calcPrio = 'medium';
   if(cat === 'Drainage' || desc.includes('school') || desc.includes('critical') || desc.includes('danger')) calcPrio = 'high'; 
   if(cat === 'Water Leak') calcPrio = 'high';
 
   const newId = `ISS00${Math.floor(Math.random()*900)+100}`;
   const issue = { 
-    id: newId, title: document.getElementById('repTitle').value, category: cat, desc: document.getElementById('repDesc').value, location: document.getElementById('repLoc').value, priority: calcPrio, status: 'pending', created: new Date().toISOString(), daysPending: 0, escalationLevel: 0, upvotes: 0, dept: routing[cat] || 'General', img: currentFileBase64, lat: 31.63 + (Math.random()*0.02 - 0.01), lng: 74.87 + (Math.random()*0.02 - 0.01), budget: 'Pending Budget Constraint', tempAction: '', volunteers: 0, schedule: 'Awaiting Assessment', timeline: [{title: 'Complaint Submitted', date: new Date().toISOString(), type:'active'}]
+    id: newId, title: document.getElementById('repTitle').value, category: cat, desc: document.getElementById('repDesc').value, location: document.getElementById('repLoc').value, priority: calcPrio, status: 'pending', created: new Date().toISOString(), daysPending: 0, escalationLevel: 0, upvotes: 0, dept: routing[cat] || 'General', img: currentFileBase64, lat: 31.63 + (Math.random()*0.02 - 0.01), lng: 74.87 + (Math.random()*0.02 - 0.01), budget: 'Pending Budget Constraint', tempAction: '', volunteers: 0, schedule: 'Awaiting Assessment', timeline: [{title: 'Complaint Submitted', date: new Date().toISOString(), type:'active'}], comments: [] // NEW: Added empty comments array
   };
   
   try {
     const { error } = await supabaseClient.from('issues').insert([issue]);
     if(error) throw error;
     await logAudit('REPORT_CREATED', `Created issue ${newId}.`);
-
     await updateUserStats(10, 1, 0, 'Reported a Civic Issue'); 
-    dispatchEmail(currentUser.email, currentUser.name, "Issue Report Confirmation", `Your issue "${issue.title}" has been successfully logged. Tracking ID: ${issue.id}. You earned 10 Points!`);
-    
+    dispatchEmail(currentUser.email, currentUser.name, "Issue Report Confirmation", `Your issue "${issue.title}" has been successfully logged. ID: ${issue.id}. You earned 10 Points!`);
     e.target.reset(); currentFileBase64 = 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'; 
     const stat = document.getElementById('uploadStatus'); if(stat) stat.innerText = '';
     
-    hideLoader();
-    showToast(`Report published! AI Assigned Priority: ${calcPrio.toUpperCase()}`, 'success', '🚀');
-    nextReportStep(1); 
-    await runAutoEscalationEngine(); navigate('track');
-  } catch (err) {
-    hideLoader();
-    console.error(err);
-    showToast('Failed to save report. Try again.', 'warning', '⚠️');
-  }
+    hideLoader(); showToast(`Report published! AI Assigned Priority: ${calcPrio.toUpperCase()}`, 'success', '🚀');
+    nextReportStep(1); await runAutoEscalationEngine(); navigate('track');
+  } catch (err) { hideLoader(); console.error(err); showToast('Failed to save report.', 'warning', '⚠️'); }
 }
 
 /* ==========================================================================
-   12. RENDER & TRACKING DASHBOARDS
+   13. TRACKING GRIDS & MAPS
    ========================================================================== */
 async function setTrackTab(tab, el) { trackTabActive = tab; document.querySelectorAll('.tab-pill').forEach(t=>t.classList.remove('active')); el.classList.add('active'); await renderTrack(); }
 
 function switchTrackView(v) {
-  const isL = v === 'list'; 
-  const contL = document.getElementById('track-list-container'); const contM = document.getElementById('track-map-container');
+  const isL = v === 'list'; const contL = document.getElementById('track-list-container'); const contM = document.getElementById('track-map-container');
   if(contL) contL.classList.toggle('hidden',!isL); if(contM) contM.classList.toggle('hidden',isL);
   const btnL = document.getElementById('btn-list-view'); const btnM = document.getElementById('btn-map-view');
   if(btnL && btnM) {
@@ -933,8 +788,7 @@ async function renderTrack() {
   const elRes = document.getElementById('cnt-res'); if(elRes) elRes.innerText = db.filter(i=>i.status==='resolved').length;
   
   const searchEl = document.getElementById('trackSearch'); const catEl = document.getElementById('trackCatFilter');
-  let search = ''; let cat = '';
-  if(searchEl) search = searchEl.value.toLowerCase(); if(catEl) cat = catEl.value;
+  let search = ''; let cat = ''; if(searchEl) search = searchEl.value.toLowerCase(); if(catEl) cat = catEl.value;
 
   if(search) db = db.filter(i => i.title.toLowerCase().includes(search) || i.desc.toLowerCase().includes(search));
   if(cat) db = db.filter(i => i.category === cat);
@@ -975,7 +829,6 @@ async function initMap() {
 async function initDedicatedMap() { 
   const mapEl = document.getElementById('dedicated-map'); if(!mapEl) return;
   if(!dedicatedMapInstance){ dedicatedMapInstance = L.map('dedicated-map').setView([31.634, 74.872], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dedicatedMapInstance); }
-  
   dedicatedMapInstance.eachLayer(l => { if(l instanceof L.Marker) dedicatedMapInstance.removeLayer(l); });
   truckTweens.forEach(t => t.kill()); truckTweens = [];
 
@@ -999,7 +852,7 @@ async function initDedicatedMap() {
 }
 
 /* ==========================================================================
-   13. MODALS & REPORT ACTIONS
+   14. MODALS & NEW SHARING / COMMENT ENGINE
    ========================================================================== */
 async function openModal(id) {
   activeModalIssueId = id; let db = await getDB(); const iss = db.find(i => i.id === id); if(!iss) return;
@@ -1033,6 +886,9 @@ async function openModal(id) {
     }).join('');
   }
 
+  // Render NEW Comments feature
+  renderComments(iss);
+
   const citArea = document.getElementById('cit-action-area'); const btnEsc = document.getElementById('btn-escalate'); const btnRti = document.getElementById('btn-rti');
   if(citArea) citArea.classList.add('hidden'); if(btnEsc) btnEsc.classList.add('hidden'); if(btnRti) btnRti.classList.add('hidden');
   
@@ -1055,29 +911,95 @@ async function openModal(id) {
 
 function closeModal() { const mOverlay = document.getElementById('modal'); if(mOverlay) mOverlay.classList.remove('open'); activeModalIssueId = null; }
 
-function openNGOForm(id) {
-  if(!currentUser || currentUser.role !== 'citizen') return showToast("Please login to volunteer or adopt.", "warning", "🔒");
-  if(id) activeModalIssueId = id;
-  document.getElementById('ngo-modal').classList.add('open');
+/* --- NEW: NATIVE SHARE API --- */
+async function shareIssue() {
+  if (!activeModalIssueId) return;
+  const url = window.location.href; 
+  const text = `Check out this civic issue reported on CiviSync: Issue #${activeModalIssueId}. Let's get it fixed!`;
+  
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'CiviSync Issue Tracking', text: text, url: url });
+      showToast('Thanks for sharing!', 'success', '🔗');
+    } catch (err) { console.log('User cancelled share', err); }
+  } else {
+    navigator.clipboard.writeText(text + "\n" + url);
+    showToast('Link copied to clipboard!', 'primary', '📋');
+  }
 }
 
+/* --- NEW: COMMENTS ENGINE --- */
+function renderComments(issue) {
+  const list = document.getElementById('mod-comments-list');
+  if(!list) return;
+  const comments = issue.comments || [];
+  if(comments.length === 0) {
+      list.innerHTML = '<p class="text-xs text-muted" style="text-align:center; padding: 1rem;">No comments yet. Be the first to start the discussion!</p>';
+      return;
+  }
+  list.innerHTML = comments.map(c => `
+      <div class="comment-bubble ${currentUser && c.email === currentUser.email ? 'my-comment' : ''}">
+          <strong>${c.name}</strong>
+          <span>${c.text}</span>
+          <div class="comment-time">${new Date(c.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+      </div>
+  `).join('');
+  list.scrollTop = list.scrollHeight;
+}
+
+async function postComment() {
+  if(!currentUser) return showToast('Please login to comment.', 'warning');
+  if(!activeModalIssueId) return;
+  
+  const input = document.getElementById('new-comment-input');
+  const text = input.value.trim();
+  if(!text) return;
+
+  const list = document.getElementById('mod-comments-list');
+  const placeholder = document.querySelector('.comments-list p.text-muted');
+  if(placeholder) placeholder.remove();
+
+  // Optimistic UI update for instant feedback
+  const now = new Date();
+  const newComment = { name: currentUser.name, email: currentUser.email, text: text, time: now.toISOString() };
+  
+  list.innerHTML += `
+      <div class="comment-bubble my-comment">
+          <strong>${newComment.name}</strong>
+          <span>${newComment.text}</span>
+          <div class="comment-time">${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+      </div>
+  `;
+  input.value = '';
+  list.scrollTop = list.scrollHeight;
+
+  // Background DB sync
+  if(supabaseClient) {
+      let db = await getDB();
+      let iss = db.find(i => i.id === activeModalIssueId);
+      if(iss) {
+          let updatedComments = iss.comments ? [...iss.comments, newComment] : [newComment];
+          await updateDB(activeModalIssueId, { comments: updatedComments });
+      }
+  }
+}
+
+/* --- ACTIONS --- */
+function openNGOForm(id) {
+  if(!currentUser || currentUser.role !== 'citizen') return showToast("Please login to volunteer or adopt.", "warning", "🔒");
+  if(id) activeModalIssueId = id; document.getElementById('ngo-modal').classList.add('open');
+}
 function closeNGOForm() { document.getElementById('ngo-modal').classList.remove('open'); }
 
 async function submitNGOForm(e) {
-  e.preventDefault();
-  closeNGOForm();
-  showToast(`Sending Proposal to Municipal Authority...`, 'primary', '⏳');
-  showLoader();
-  
+  e.preventDefault(); closeNGOForm(); showToast(`Sending Proposal to Municipal Authority...`, 'primary', '⏳'); showLoader();
   setTimeout(async () => {
     let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId); 
     await updateDB(activeModalIssueId, { volunteers: iss.volunteers + 5 });
     await updateUserStats(50, 0, 1, `Adopted Issue ${activeModalIssueId}`);
     await logAudit('NGO_PLEDGE', `Pledged support for Issue ${activeModalIssueId}.`);
-    
-    dispatchEmail(currentUser.email, currentUser.name, "NGO Proposal Sent", `Your proposal to adopt Issue ${activeModalIssueId} has been sent to the authorities. You earned 50 Points!`);
-    hideLoader();
-    showToast(`Success! Proposal Email delivered to Authorities.`, 'success', '📧');
+    dispatchEmail(currentUser.email, currentUser.name, "NGO Proposal Sent", `Your proposal to adopt Issue ${activeModalIssueId} has been sent. You earned 50 Points!`);
+    hideLoader(); showToast(`Success! Proposal Email delivered to Authorities.`, 'success', '📧');
     const volEl = document.getElementById('mod-vol-count'); if(volEl) volEl.innerText = iss.volunteers + 5;
     await reRenderAllActive();
   }, 2000);
@@ -1094,38 +1016,32 @@ async function upvoteIssue() {
 }
 
 async function manualEscalate() {
-  showLoader();
-  let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
+  showLoader(); let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
   let newTimeline = [...iss.timeline, {title: 'Citizen Triggered Manual Escalation', date: new Date().toISOString(), type:'escalated'}];
   await updateDB(activeModalIssueId, { timeline: newTimeline, escalationLevel: Math.max(iss.escalationLevel, 1) });
   await logAudit('ESCALATE_MANUAL', `Manually escalated Issue ${activeModalIssueId}.`);
   dispatchEmail(currentUser.email, currentUser.name, "Escalation Request Received", `Your request to escalate Issue ${activeModalIssueId} has been sent to the Ward Officer.`);
-  hideLoader();
-  showToast('Escalation Request emailed to Ward Officer.', 'success', '📧');
+  hideLoader(); showToast('Escalation Request emailed to Ward Officer.', 'success', '📧');
   closeModal(); await runAutoEscalationEngine(); await renderTrack();
 }
 
 async function adminSaveStatus() {
-  showLoader();
-  const sStat = document.getElementById('admin-sel-stat'); const sBud = document.getElementById('admin-sel-budget');
-  if(!sStat) return;
-  const s = sStat.value; const b = sBud ? sBud.value : 'Funded';
+  showLoader(); const sStat = document.getElementById('admin-sel-stat'); const sBud = document.getElementById('admin-sel-budget');
+  if(!sStat) return; const s = sStat.value; const b = sBud ? sBud.value : 'Funded';
   let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
   let newTimeline = [...iss.timeline, {title: `Status updated to: ${s.toUpperCase()}`, date: new Date().toISOString(), type:'active'}];
   await updateDB(activeModalIssueId, { status: s, budget: b, timeline: newTimeline });
   await logAudit('STATUS_CHANGE', `Changed Issue ${activeModalIssueId} status to ${s}.`);
-  hideLoader();
-  showToast(`Updates successfully saved. Notifications dispatched.`, 'success', '✅');
+  hideLoader(); showToast(`Updates successfully saved. Notifications dispatched.`, 'success', '✅');
   closeModal(); await reRenderAllActive();
 }
 
 /* ==========================================================================
-   14. ADMIN, NGO, BUDGET & ANALYTICS PANELS
+   15. ADMIN, NGO, BUDGET & NEW HEATMAP PANELS
    ========================================================================== */
 function generatePDFReport() {
   const element = document.getElementById('pdf-content'); const tbody = document.getElementById('pdf-table-body');
-  if(!element || !tbody) return;
-  element.classList.remove('hidden');
+  if(!element || !tbody) return; element.classList.remove('hidden');
   const opt = { margin: 0.5, filename: 'CiviSync-Report.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
   html2pdf().set(opt).from(element).save().then(() => { element.classList.add('hidden'); });
 }
@@ -1160,6 +1076,32 @@ async function renderAdmin() {
   if(admTab) admTab.innerHTML = db.map(i => `<tr><td><span class="table-id">${i.id}</span></td><td class="font-medium">${i.title}</td><td>${i.budget.includes('Pending') ? `<span style="color:var(--danger); font-weight:600;">${i.budget}</span>` : i.budget}</td><td>${getBadgeHTML('status', i.status)}</td><td><button type="button" class="btn btn-outline text-xs" style="position:relative; z-index:20; cursor:pointer;" onclick="openModal('${i.id}'); event.stopPropagation();">View / Manage</button></td></tr>`).join('');
 }
 
+/* --- NEW: ADMIN HEATMAP INITIALIZER --- */
+async function initAdminHeatmap() {
+  const mapEl = document.getElementById('admin-heatmap');
+  if(!mapEl) return;
+  
+  if(!heatmapInstance) {
+    heatmapInstance = L.map('admin-heatmap').setView([31.634, 74.872], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(heatmapInstance);
+  }
+
+  let db = await getDB();
+  let heatData = db.filter(i => i.lat && i.lng).map(i => [
+    i.lat, i.lng, i.priority === 'high' ? 1.0 : (i.priority === 'medium' ? 0.6 : 0.3) 
+  ]);
+
+  heatmapInstance.eachLayer(layer => { if (!layer._url) heatmapInstance.removeLayer(layer); });
+
+  if(heatData.length > 0 && typeof L.heatLayer !== 'undefined') {
+    L.heatLayer(heatData, {
+        radius: 25, blur: 15, maxZoom: 15,
+        gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red'}
+    }).addTo(heatmapInstance);
+  }
+  setTimeout(() => heatmapInstance.invalidateSize(), 200);
+}
+
 async function renderAnalytics() {
   const db = await getDB(); const total = db.length || 1; const pen = db.filter(i => i.status === 'pending').length; const prog = db.filter(i => i.status === 'in progress').length; const res = db.filter(i => i.status === 'resolved').length; const hi = db.filter(i => i.priority === 'high').length; const med = db.filter(i => i.priority === 'medium').length; const low = db.filter(i => i.priority === 'low').length;
   
@@ -1181,6 +1123,9 @@ async function renderAnalytics() {
     if(charts.trend) charts.trend.destroy();
     charts.trend = new Chart(chTrend, { type: 'line', data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [{ label: 'Issues Resolved', data: [12, 19, 15, 25, 22, 30, res], borderColor: '#10b981', tension: 0.4, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.1)' }] }, options: { responsive: true, maintainAspectRatio: false } });
   }
+
+  // Fire Heatmap initializations
+  await initAdminHeatmap();
 }
 
 async function renderPointsHistory() {
@@ -1227,14 +1172,11 @@ async function renderBudget() {
 }
 
 async function allocateFunds(id) {
-  showLoader();
-  let db = await getDB(); const iss = db.find(i => i.id === id);
+  showLoader(); let db = await getDB(); const iss = db.find(i => i.id === id);
   let newTimeline = [...iss.timeline, {title: 'Funds Approved', date: new Date().toISOString(), type:'active'}];
   await updateDB(id, { budget: 'Funded', status: 'in progress', timeline: newTimeline });
   await logAudit('FUNDS_ALLOCATED', `Approved budget for Issue ${id}.`);
-  hideLoader();
-  showToast(`Funding approved!`, 'success', '💰');
-  await reRenderAllActive();
+  hideLoader(); showToast(`Funding approved!`, 'success', '💰'); await reRenderAllActive();
 }
 
 async function renderGov() {
