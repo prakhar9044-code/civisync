@@ -1,1078 +1,1400 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>CiviSync - Smart City Management</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CiviSync - Smart City Management</title>
 
-<link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2942/2942821.png">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2563eb">
-<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2942/2942821.png">
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2942/2942821.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2942/2942821.png">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
-<link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div id="global-loader" class="loader-overlay">
-  <div class="loader-content">
-    <img src="https://cdn-icons-png.flaticon.com/512/2942/2942821.png" alt="CiviSync" class="loader-logo">
-    <h2 style="color: white; margin-top: 15px; font-weight: 800; letter-spacing: 1px;">CiviSync</h2>
-    <div class="loader-spinner"></div>
-  </div>
-</div>
-
-<div id="toast-container"></div>
-
-<div class="advisory-marquee" id="global-advisory">
-  <div class="advisory-content">
-    <span class="marquee-item">🚨 <strong>URGENT:</strong> Severe water-logging reported in Sector 4. Avoid travel.</span>
-    <span class="marquee-item">🚧 <strong>UPDATE:</strong> Highway repairs scheduled for this weekend.</span>
-    <span class="marquee-item">⭐ <strong>COMMUNITY:</strong> 50+ new volunteers joined the beach cleanup!</span>
-    <span class="marquee-item">🚨 <strong>URGENT:</strong> Severe water-logging reported in Sector 4. Avoid travel.</span>
-  </div>
-</div>
-
-<nav class="navbar">
-  <div class="nav-brand ripple-element" onclick="navigate('landing')">
-    <img src="https://cdn-icons-png.flaticon.com/512/2942/2942821.png" alt="CiviSync Logo" style="height:35px; margin-right:10px;">
-    <span class="brand-text">Civi<span>Sync</span></span>
-  </div>
-  
-  <div class="nav-links" id="desktop-nav">
-    <div class="nav-link active ripple-element" id="nav-landing" onclick="navigate('landing')">Home</div>
-    <div class="nav-link ripple-element" id="nav-about" onclick="navigate('about')">About Us</div>
-    <div class="nav-link ripple-element" id="nav-guidelines" onclick="navigate('guidelines')">Guidelines</div>
-    <div class="nav-link ripple-element" id="nav-transparency" onclick="navigate('transparency')">Transparency</div>
-    
-    <div class="nav-link ripple-element auth-req hidden" id="nav-leaderboard" onclick="navigate('leaderboard')">🏆 Leaderboard</div>
-    <div class="nav-link ripple-element auth-req hidden" id="nav-report" onclick="navigate('report')">Report Issue</div>
-    <div class="nav-link ripple-element auth-req hidden" id="nav-track" onclick="navigate('track')">Track Issues</div>
-    <div class="nav-link ripple-element auth-req hidden" id="nav-map" onclick="navigate('map')">Issue Map</div>
-    
-    <div class="nav-link ripple-element hidden auth-req" id="nav-points" onclick="navigate('points')">Points</div>
-    <div class="nav-link ripple-element hidden auth-req" id="nav-ngo" onclick="navigate('ngo')" style="color: var(--purple); font-weight: bold;">NGO Hub</div>
-    
-    <div class="nav-link ripple-element hidden auth-req" id="nav-admin" onclick="navigate('admin')">Dashboard</div>
-    <div class="nav-link ripple-element hidden auth-req" id="nav-analytics" onclick="navigate('analytics')">Analytics</div>
-    <div class="nav-link ripple-element hidden auth-req" id="nav-budget" onclick="navigate('budget')">Budgeting</div>
-    <div class="nav-link ripple-element hidden auth-req" id="nav-gov" onclick="navigate('gov')" style="color: #ea580c; font-weight: bold;">🏛️ Govt Channel</div>
-    <div class="nav-link ripple-element hidden auth-req" id="nav-integrations" onclick="navigate('integrations')">🔌 Integrations</div>
-    <div class="nav-link ripple-element hidden auth-req" id="nav-superadmin" onclick="navigate('superadmin')" style="color: #10b981; font-weight: bold;">👁️ System Audit</div>
-  </div>
-
-  <div class="nav-controls">
-    <div id="google_translate_element" class="translate-box"></div>
-
-    <div id="user-points" class="points-badge hidden" onclick="navigate('points')">⭐ <span id="pts-val">0</span> pts</div>
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">🌙</button>
-    <button class="btn btn-blue ripple-element" style="border-radius: 50px;" id="btn-auth" onclick="navigate('auth')">Login / Register</button>
-    
-    <div class="user-menu-container hidden" id="user-menu-container">
-      <div class="user-avatar" id="avatar-initials">U</div>
-      <div class="dropdown-menu" id="avatar-dropdown">
-        <div class="dropdown-header">
-          <h4 id="drop-name">User Name</h4>
-          <p id="drop-email">user@email.com</p>
-        </div>
-        <div class="dropdown-item" onclick="navigate('profile')">👤 My Profile</div>
-        <div class="dropdown-item" onclick="navigate('settings')">⚙️ Settings & DB Sync</div>
-        <div class="dropdown-divider"></div>
-        <div class="dropdown-item" style="color: var(--danger);" onclick="logout()">🚪 Logout</div>
-      </div>
+  <div id="global-loader" class="loader-overlay">
+    <div class="cyber-loader-container">
+      <div class="cyber-ring ring1"></div>
+      <div class="cyber-ring ring2"></div>
+      <div class="cyber-ring ring3"></div>
+      <img src="https://cdn-icons-png.flaticon.com/512/2942/2942821.png" alt="CiviSync" class="loader-logo-inner">
+    </div>
+    <div class="cyber-text">INITIALIZING CIVISYNC_</div>
+    <div class="loading-bar-container">
+      <div class="loading-bar-fill"></div>
     </div>
   </div>
-</nav>
 
-<main id="app-root">
+  <div id="toast-container"></div>
 
-  <div id="view-landing" class="view active">
-    <section class="hero-section">
-      <h1 class="hero-title" id="typewriter-text" style="min-height: 140px;">A Smarter Way to Report,<br>Track, and Resolve Civic Issues.</h1>
-      <p class="hero-subtitle reveal-text delay-1" id="hero-sub">Empowering citizens with AI-driven routing, transparent budget tracking, and community volunteering to build safer cities together.</p>
-      <div class="reveal-text delay-2" style="display: flex; gap: 1rem; justify-content: center;">
-        <button class="btn btn-surface ripple-element" style="background: white; color: var(--primary); padding: 0.875rem 2.5rem; font-size: 1.05rem; font-weight: 700; border-radius: 50px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);" onclick="checkAuthAndGo('report')">Report an Issue</button>
-        <button class="btn ripple-element" style="background: rgba(255,255,255,0.15); color: white; padding: 0.875rem 2.5rem; font-size: 1.05rem; font-weight: 600; border-radius: 50px; border: 1px solid rgba(255,255,255,0.4); backdrop-filter: blur(5px);" onclick="navigate('track')">View Dashboard</button>
-      </div>
-    </section>
-
-    <section style="padding: 5rem 0 2rem; overflow: hidden; background: var(--bg-surface);">
-      <div class="section-title"><h2 id="title-testimonial">What Our City Says</h2></div>
-      <div class="testimonial-wrapper">
-        <div class="testimonial-track" id="testimonial-track">
-          <div class="testimonial-card">
-            <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
-            <p class="text-sm">"This platform is amazing! I reported a broken streetlight using my voice, and it was fixed in just 2 days. The tracking is so transparent."</p>
-            <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
-              <div style="width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold;">SL</div>
-              <div><h4 style="font-size:0.9rem;">Sarah L.</h4><p class="text-xs text-muted">Local Citizen</p></div>
-            </div>
-          </div>
-          <div class="testimonial-card">
-            <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
-            <p class="text-sm">"As an NGO director, CiviSync helps us find unfunded projects to adopt. The 'Volunteer' button is a game-changer for community action."</p>
-            <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
-              <div style="width: 40px; height: 40px; background: var(--purple-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--purple); font-weight: bold;">GE</div>
-              <div><h4 style="font-size:0.9rem;">Green Earth Org</h4><p class="text-xs text-muted">Community Partner</p></div>
-            </div>
-          </div>
-          <div class="testimonial-card">
-            <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
-            <p class="text-sm">"The budget transparency dashboard saves our phone lines. Citizens can actually see *why* a project is delayed to the next cycle."</p>
-            <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
-              <div style="width: 40px; height: 40px; background: var(--danger-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--danger); font-weight: bold;">MT</div>
-              <div><h4 style="font-size:0.9rem;">Mark T.</h4><p class="text-xs text-muted">City Planner</p></div>
-            </div>
-          </div>
-          <div class="testimonial-card">
-            <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
-            <p class="text-sm">"Generating automated policy reports in PDF format makes our quarterly budget meetings 10x more efficient. Pure data."</p>
-            <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
-              <div style="width: 40px; height: 40px; background: var(--success-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--success); font-weight: bold;">RJ</div>
-              <div><h4 style="font-size:0.9rem;">Rachel J.</h4><p class="text-xs text-muted">Authority Admin</p></div>
-            </div>
-          </div>
-          <div class="testimonial-card">
-            <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
-            <p class="text-sm">"This platform is amazing! I reported a broken streetlight using my voice, and it was fixed in just 2 days. The tracking is so transparent."</p>
-            <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
-              <div style="width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold;">SL</div>
-              <div><h4 style="font-size:0.9rem;">Sarah L.</h4><p class="text-xs text-muted">Local Citizen</p></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="container" style="padding-top: 5rem; padding-bottom: 5rem;">
-      <div class="section-title">
-        <h2>Next-Generation Civic Technology</h2>
-        <p>Going beyond simple reporting by handling real-world municipal challenges like budget constraints and temporary safety measures.</p>
-      </div>
-      
-      <div class="grid-3">
-        <div class="feature-card">
-          <div class="feature-icon animated-icon">✨</div>
-          <h3 style="margin-bottom: 0.75rem;">AI-Assisted Routing & Priority</h3>
-          <p class="text-muted text-sm">Our system analyzes your issue description in real-time to automatically categorize the problem, flag critical safety hazards, and route it to the correct department.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon animated-icon" style="animation-delay: 0.5s;">📊</div>
-          <h3 style="margin-bottom: 0.75rem;">Budget Transparency</h3>
-          <p class="text-muted text-sm">Understand exactly why an issue is delayed with clear budget constraint visibility and smart scheduling for upcoming fiscal cycles.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon animated-icon" style="animation-delay: 1s;">🚧</div>
-          <h3 style="margin-bottom: 0.75rem;">Preventive Action & Escalation</h3>
-          <p class="text-muted text-sm">Track temporary safety measures applied by authorities. If issues delay beyond SLAs, they automatically escalate to Ministry portals.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon animated-icon" style="animation-delay: 1.5s;">🤝</div>
-          <h3 style="margin-bottom: 0.75rem;">Community Support</h3>
-          <p class="text-muted text-sm">Citizens and NGOs can "Adopt an Issue" to volunteer resources, time, or funds when government budgets fall short.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon animated-icon" style="animation-delay: 2s;">🗺️</div>
-          <h3 style="margin-bottom: 0.75rem;">Real-Time Mapping</h3>
-          <p class="text-muted text-sm">Built-in Leaflet.js integration plots every issue on an interactive city map, allowing citizens and admins to visualize problem areas instantly.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon animated-icon" style="animation-delay: 2.5s;">📱</div>
-          <h3 style="margin-bottom: 0.75rem;">PWA Ready</h3>
-          <p class="text-muted text-sm">Install CiviSync directly to your home screen for a native mobile app experience without going through an App Store.</p>
-        </div>
-      </div>
-    </section>
-
-    <section style="background: var(--bg-surface); border-top: 1px solid var(--border); padding: 5rem 0;">
-      <div class="container">
-        <div class="section-title">
-          <h2>How CiviSync Works</h2>
-          <p>A seamless, transparent loop from the moment an issue is spotted to the moment it's resolved.</p>
-        </div>
-        <div class="grid-4" style="position: relative;">
-          <div class="step-card">
-            <div class="step-number">1</div>
-            <h4 style="margin-bottom: 0.5rem;">Spot & Report</h4>
-            <p class="text-muted text-sm">Upload a photo, describe the issue via text or voice, and let GPS pinpoint the exact location.</p>
-          </div>
-          <div class="step-card">
-            <div class="step-number">2</div>
-            <h4 style="margin-bottom: 0.5rem;">AI Categorization</h4>
-            <p class="text-muted text-sm">The system auto-detects the issue type and flags high-priority hazards.</p>
-          </div>
-          <div class="step-card">
-            <div class="step-number">3</div>
-            <h4 style="margin-bottom: 0.5rem;">Authority Action</h4>
-            <p class="text-muted text-sm">City admins receive the routed ticket on their dashboard and allocate budgets or deploy teams.</p>
-          </div>
-          <div class="step-card">
-            <div class="step-number">4</div>
-            <h4 style="margin-bottom: 0.5rem;">Transparent Update</h4>
-            <p class="text-muted text-sm">Citizens get notified, the audit log is updated, and the interactive map reflects the fix.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="stats-section">
-      <div class="container">
-        <div class="grid-3">
-          <div class="stat-block"><h3>48h</h3><p class="font-medium text-muted">Average Resolution Time</p></div>
-          <div class="stat-block"><h3>12,450+</h3><p class="font-medium text-muted">Issues Successfully Resolved</p></div>
-          <div class="stat-block"><h3>85%</h3><p class="font-medium text-muted">Increase in Citizen Trust</p></div>
-        </div>
-      </div>
-    </section>
-
-    <section style="padding: 5rem 2rem; text-align: center;">
-      <h2 style="font-size: 2.25rem; margin-bottom: 1rem;">Ready to transform your city?</h2>
-      <p class="text-muted" style="margin-bottom: 2rem;">Join thousands of citizens actively improving their neighborhoods today.</p>
-      <button class="btn btn-blue ripple-element" style="padding: 1rem 2.5rem; font-size: 1.1rem; border-radius: 50px;" onclick="navigate('auth')">Create Your Citizen Account</button>
-    </section>
-
-    <footer class="footer">
-      <div class="footer-grid">
-        <div>
-          <div class="nav-brand" style="color: white; margin-bottom: 1rem;">
-            <img src="https://cdn-icons-png.flaticon.com/512/2942/2942821.png" alt="Logo" style="height:35px; margin-right:8px; filter: brightness(0) invert(1);"> 
-            CiviSync
-          </div>
-          <p class="text-sm" style="line-height: 1.6; max-width: 300px;">A comprehensive, transparent, and AI-driven platform designed to bridge the gap between citizens, NGOs, and municipal authorities.</p>
-        </div>
-        <div>
-          <h4 class="footer-heading">Platform</h4>
-          <ul class="footer-links text-sm">
-            <li><a href="#" onclick="navigate('report')">Report Issue</a></li>
-            <li><a href="#" onclick="navigate('track')">Track Dashboard</a></li>
-            <li><a href="#" onclick="navigate('auth')">Admin Portal</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="footer-heading">Resources</h4>
-          <ul class="footer-links text-sm">
-            <li><a href="#" onclick="navigate('about')">About Us</a></li>
-            <li><a href="#" onclick="navigate('guidelines')">City Guidelines</a></li>
-            <li><a href="#">Privacy Policy</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="footer-heading">Contact</h4>
-          <ul class="footer-links text-sm">
-            <li>support@civisync.gov</li>
-            <li>Emergency: 911</li>
-            <li>Non-Emergency: 311</li>
-          </ul>
-        </div>
-      </div>
-      <div style="text-align: center; padding-top: 2rem; font-size: 0.875rem;">
-        &copy; 2026 CiviSync Platform. All rights reserved.
-      </div>
-    </footer>
+  <div class="advisory-marquee" id="global-advisory">
+    <div class="advisory-content">
+      <span class="marquee-item">🚨 <strong>URGENT:</strong> Severe water-logging reported in Sector 4. Avoid travel.</span>
+      <span class="marquee-item">🚧 <strong>UPDATE:</strong> Highway repairs scheduled for this weekend.</span>
+      <span class="marquee-item">⭐ <strong>COMMUNITY:</strong> 50+ new volunteers joined the beach cleanup!</span>
+      <span class="marquee-item">🚨 <strong>URGENT:</strong> Severe water-logging reported in Sector 4. Avoid travel.</span>
+      <span class="marquee-item">🚧 <strong>UPDATE:</strong> Highway repairs scheduled for this weekend.</span>
+    </div>
   </div>
 
-  <div id="view-auth" class="view container">
-    <div style="max-width: 550px; margin: 3rem auto;">
-      <div class="auth-card">
-        <div style="display: flex; margin-bottom: 2rem; border-bottom: 2px solid var(--bg-app); padding-bottom: 0.5rem; overflow-x: auto;">
-          <button class="btn ripple-element" style="flex:1; background:none; color:var(--primary); font-weight:700; font-size:0.9rem; border-bottom: 3px solid var(--primary); border-radius:0; white-space:nowrap;" id="tab-cit" onclick="switchAuthTab('citizen')">Citizen</button>
-          <button class="btn ripple-element" style="flex:1; background:none; color:var(--text-secondary); font-weight:600; font-size:0.9rem; border-bottom: 3px solid transparent; border-radius:0; white-space:nowrap;" id="tab-adm" onclick="switchAuthTab('admin')">Authority</button>
-          <button class="btn ripple-element" style="flex:1; background:none; color:var(--text-secondary); font-weight:600; font-size:0.9rem; border-bottom: 3px solid transparent; border-radius:0; white-space:nowrap;" id="tab-gov" onclick="switchAuthTab('gov')">Govt</button>
-          <button class="btn ripple-element" style="flex:1; background:none; color:var(--text-secondary); font-weight:600; font-size:0.9rem; border-bottom: 3px solid transparent; border-radius:0; white-space:nowrap;" id="tab-super" onclick="switchAuthTab('super')">Admin</button>
+  <nav class="navbar">
+    <div class="nav-brand ripple-element" onclick="navigate('landing')">
+      <img src="https://cdn-icons-png.flaticon.com/512/2942/2942821.png" alt="CiviSync Logo" style="height:35px; margin-right:10px;">
+      <span class="brand-text">Civi<span>Sync</span></span>
+    </div>
+    
+    <div class="nav-links" id="desktop-nav">
+      <div class="nav-link active ripple-element" id="nav-landing" onclick="navigate('landing')">Home</div>
+      <div class="nav-link ripple-element" id="nav-about" onclick="navigate('about')">About Us</div>
+      <div class="nav-link ripple-element" id="nav-guidelines" onclick="navigate('guidelines')">Guidelines</div>
+      <div class="nav-link ripple-element" id="nav-transparency" onclick="navigate('transparency')">Transparency</div>
+      
+      <div class="nav-link ripple-element auth-req hidden" id="nav-leaderboard" onclick="navigate('leaderboard')">🏆 Leaderboard</div>
+      <div class="nav-link ripple-element auth-req hidden" id="nav-report" onclick="navigate('report')">Report Issue</div>
+      <div class="nav-link ripple-element auth-req hidden" id="nav-track" onclick="navigate('track')">Track Issues</div>
+      <div class="nav-link ripple-element auth-req hidden" id="nav-map" onclick="navigate('map')">Issue Map</div>
+      <div class="nav-link ripple-element hidden auth-req" id="nav-points" onclick="navigate('points')">Points</div>
+      <div class="nav-link ripple-element hidden auth-req" id="nav-ngo" onclick="navigate('ngo')" style="color: var(--purple); font-weight: bold;">NGO Hub</div>
+      
+      <div class="nav-link ripple-element hidden auth-req" id="nav-admin" onclick="navigate('admin')">Dashboard</div>
+      <div class="nav-link ripple-element hidden auth-req" id="nav-analytics" onclick="navigate('analytics')">Analytics</div>
+      <div class="nav-link ripple-element hidden auth-req" id="nav-budget" onclick="navigate('budget')">Budgeting</div>
+      <div class="nav-link ripple-element hidden auth-req" id="nav-gov" onclick="navigate('gov')" style="color: #ea580c; font-weight: bold;">🏛️ Govt Channel</div>
+      <div class="nav-link ripple-element hidden auth-req" id="nav-integrations" onclick="navigate('integrations')">🔌 Integrations</div>
+      <div class="nav-link ripple-element hidden auth-req" id="nav-superadmin" onclick="navigate('superadmin')" style="color: #10b981; font-weight: bold;">👁️ System Audit</div>
+    </div>
+
+    <div class="nav-controls">
+      <div class="custom-lang-wrapper ripple-element">
+        <div class="globe-container"><span class="globe-icon">🌐</span></div>
+        <div id="google_translate_element" class="translate-box"></div>
+      </div>
+
+      <div id="user-points" class="points-badge hidden" onclick="navigate('points')">⭐ <span id="pts-val">0</span> pts</div>
+      
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">🌙</button>
+      
+      <button class="btn btn-blue ripple-element" style="border-radius: 50px;" id="btn-auth" onclick="navigate('auth')">Login / Register</button>
+      
+      <div class="user-menu-container hidden" id="user-menu-container">
+        <div class="user-avatar" id="avatar-initials">U</div>
+        <div class="dropdown-menu" id="avatar-dropdown">
+          <div class="dropdown-header">
+            <h4 id="drop-name">User Name</h4>
+            <p id="drop-email">user@email.com</p>
+          </div>
+          <div class="dropdown-item" onclick="navigate('profile')">👤 My Profile</div>
+          <div class="dropdown-item" onclick="navigate('settings')">⚙️ Settings & DB Sync</div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" style="color: var(--danger);" onclick="logout()">🚪 Logout</div>
         </div>
+      </div>
+    </div>
+  </nav>
 
-        <div id="area-cit" class="auth-animate">
-          <div class="auth-sub-tabs" style="display:flex; background:var(--bg-app); border-radius:var(--radius-md); padding:0.35rem; margin-bottom:1.5rem;">
-            <button id="btn-login-cit" class="active ripple-element" style="flex:1; padding:0.75rem; border:none; border-radius:var(--radius-sm); font-weight:600; background:var(--bg-surface); color:var(--primary); box-shadow:var(--shadow-sm);" onclick="toggleCitAuth('login')">Log In</button>
-            <button id="btn-reg-cit" class="ripple-element" style="flex:1; padding:0.75rem; border:none; border-radius:var(--radius-sm); font-weight:600; background:transparent; color:var(--text-secondary);" onclick="toggleCitAuth('register')">Register</button>
+  <main id="app-root">
+
+    <div id="view-landing" class="view active">
+      <section class="hero-section scroll-anim scroll-fade-up">
+        <h1 class="hero-title" id="typewriter-text" style="min-height: 140px;">A Smarter Way to Report,<br>Track, and Resolve Civic Issues.</h1>
+        <p class="hero-subtitle reveal-text delay-1" id="hero-sub">Empowering citizens with AI-driven routing, transparent budget tracking, and community volunteering to build safer cities together.</p>
+        <div class="reveal-text delay-2" style="display: flex; gap: 1rem; justify-content: center;">
+          <button class="btn btn-surface ripple-element" style="background: white; color: var(--primary); padding: 0.875rem 2.5rem; font-size: 1.05rem; font-weight: 700; border-radius: 50px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);" onclick="checkAuthAndGo('report')">Report an Issue</button>
+          <button class="btn ripple-element" style="background: rgba(255,255,255,0.15); color: white; padding: 0.875rem 2.5rem; font-size: 1.05rem; font-weight: 600; border-radius: 50px; border: 1px solid rgba(255,255,255,0.4); backdrop-filter: blur(5px);" onclick="navigate('track')">View Dashboard</button>
+        </div>
+      </section>
+
+      <section class="scroll-anim scroll-fade-in" style="padding: 5rem 0 2rem; overflow: hidden; background: var(--bg-surface);">
+        <div class="section-title">
+          <h2 id="title-testimonial">What Our City Says</h2>
+        </div>
+        <div class="testimonial-wrapper">
+          <div class="testimonial-track" id="testimonial-track">
+            
+            <div class="testimonial-card">
+              <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+              <p class="text-sm">"This platform is amazing! I reported a broken streetlight using my voice, and it was fixed in just 2 days. The tracking is so transparent."</p>
+              <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+                <div style="width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold;">SL</div>
+                <div>
+                  <h4 style="font-size:0.9rem;">Sarah L.</h4>
+                  <p class="text-xs text-muted">Local Citizen</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="testimonial-card">
+              <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+              <p class="text-sm">"As an NGO director, CiviSync helps us find unfunded projects to adopt. The 'Volunteer' button is a game-changer for community action."</p>
+              <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+                <div style="width: 40px; height: 40px; background: var(--purple-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--purple); font-weight: bold;">GE</div>
+                <div>
+                  <h4 style="font-size:0.9rem;">Green Earth Org</h4>
+                  <p class="text-xs text-muted">Community Partner</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="testimonial-card">
+              <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+              <p class="text-sm">"The budget transparency dashboard saves our phone lines. Citizens can actually see *why* a project is delayed to the next cycle."</p>
+              <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+                <div style="width: 40px; height: 40px; background: var(--danger-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--danger); font-weight: bold;">MT</div>
+                <div>
+                  <h4 style="font-size:0.9rem;">Mark T.</h4>
+                  <p class="text-xs text-muted">City Planner</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="testimonial-card">
+              <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+              <p class="text-sm">"Generating automated policy reports in PDF format makes our quarterly budget meetings 10x more efficient. Pure data."</p>
+              <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+                <div style="width: 40px; height: 40px; background: var(--success-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--success); font-weight: bold;">RJ</div>
+                <div>
+                  <h4 style="font-size:0.9rem;">Rachel J.</h4>
+                  <p class="text-xs text-muted">Authority Admin</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="testimonial-card">
+              <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+              <p class="text-sm">"This platform is amazing! I reported a broken streetlight using my voice, and it was fixed in just 2 days. The tracking is so transparent."</p>
+              <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+                <div style="width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold;">SL</div>
+                <div>
+                  <h4 style="font-size:0.9rem;">Sarah L.</h4>
+                  <p class="text-xs text-muted">Local Citizen</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="testimonial-card">
+              <div style="color: var(--warning); font-size: 1.2rem; margin-bottom: 0.5rem;">★★★★★</div>
+              <p class="text-sm">"As an NGO director, CiviSync helps us find unfunded projects to adopt. The 'Volunteer' button is a game-changer for community action."</p>
+              <div style="display:flex; align-items:center; gap: 1rem; margin-top: 1rem;">
+                <div style="width: 40px; height: 40px; background: var(--purple-bg); border-radius: 50%; display: flex; align-items:center; justify-content:center; color: var(--purple); font-weight: bold;">GE</div>
+                <div>
+                  <h4 style="font-size:0.9rem;">Green Earth Org</h4>
+                  <p class="text-xs text-muted">Community Partner</p>
+                </div>
+              </div>
+            </div>
+
           </div>
+        </div>
+      </section>
 
-          <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem;">
-            <button type="button" class="btn social-btn ripple-element" style="flex:1;" onclick="socialLogin('google')"><img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google"></button>
-            <button type="button" class="btn social-btn ripple-element" style="flex:1;" onclick="socialLogin('facebook')"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" alt="FB"></button>
-            <button type="button" class="btn social-btn ripple-element" style="flex:1;" onclick="socialLogin('linkedin_oidc')"><img src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png" alt="LinkedIn"></button>
+      <section class="container scroll-anim scroll-fade-up" style="padding-top: 5rem; padding-bottom: 5rem;">
+        <div class="section-title">
+          <h2>Next-Generation Civic Technology</h2>
+          <p>Going beyond simple reporting by handling real-world municipal challenges like budget constraints and temporary safety measures.</p>
+        </div>
+        
+        <div class="grid-3">
+          <div class="feature-card scroll-anim scroll-scale-up stagger-1">
+            <div class="feature-icon animated-icon">✨</div>
+            <h3 style="margin-bottom: 0.75rem;">AI-Assisted Routing</h3>
+            <p class="text-muted text-sm">Our system analyzes your issue description in real-time to automatically categorize the problem and route it to the correct department.</p>
           </div>
-          <div style="text-align:center; color:var(--text-secondary); font-size:0.8rem; margin-bottom:1.5rem;">OR CONTINUE WITH EMAIL / MOBILE OTP</div>
+          
+          <div class="feature-card scroll-anim scroll-scale-up stagger-2">
+            <div class="feature-icon animated-icon" style="animation-delay: 0.5s;">📊</div>
+            <h3 style="margin-bottom: 0.75rem;">Budget Transparency</h3>
+            <p class="text-muted text-sm">Understand exactly why an issue is delayed with clear budget constraint visibility and smart scheduling for upcoming fiscal cycles.</p>
+          </div>
+          
+          <div class="feature-card scroll-anim scroll-scale-up stagger-3">
+            <div class="feature-icon animated-icon" style="animation-delay: 1s;">🚧</div>
+            <h3 style="margin-bottom: 0.75rem;">Preventive Escalation</h3>
+            <p class="text-muted text-sm">Track temporary safety measures applied by authorities. If issues delay beyond SLAs, they automatically escalate to Ministry portals.</p>
+          </div>
+          
+          <div class="feature-card scroll-anim scroll-scale-up stagger-1">
+            <div class="feature-icon animated-icon" style="animation-delay: 1.5s;">🤝</div>
+            <h3 style="margin-bottom: 0.75rem;">Community Support</h3>
+            <p class="text-muted text-sm">Citizens and NGOs can "Adopt an Issue" to volunteer resources, time, or funds when government budgets fall short.</p>
+          </div>
+          
+          <div class="feature-card scroll-anim scroll-scale-up stagger-2">
+            <div class="feature-icon animated-icon" style="animation-delay: 2s;">🗺️</div>
+            <h3 style="margin-bottom: 0.75rem;">Real-Time Mapping</h3>
+            <p class="text-muted text-sm">Built-in Leaflet.js integration plots every issue on an interactive city map, allowing citizens and admins to visualize problem areas instantly.</p>
+          </div>
+          
+          <div class="feature-card scroll-anim scroll-scale-up stagger-3">
+            <div class="feature-icon animated-icon" style="animation-delay: 2.5s;">📱</div>
+            <h3 style="margin-bottom: 0.75rem;">PWA Ready</h3>
+            <p class="text-muted text-sm">Install CiviSync directly to your home screen for a native mobile app experience without going through an App Store.</p>
+          </div>
+        </div>
+      </section>
 
-          <form id="form-cit-login" class="auth-animate" onsubmit="handleCitizenOTPFlow(event)">
-            <div id="cit-login-step-1">
-              <div class="form-group">
-                <label class="form-label">Registered Email</label>
-                <input type="email" id="cit-login-identifier" class="form-control" placeholder="citizen@city.com" required>
-              </div>
-              <div class="form-group" style="position:relative;">
-                <label class="form-label">Secure Password (Optional if using OTP)</label>
-                <input type="password" class="form-control" id="cit-login-pwd" placeholder="••••••••">
-                <span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('cit-login-pwd')">👁️</span>
-              </div>
-              <div style="text-align: right; margin-bottom: 1.5rem;">
-                <span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600;" onclick="openForgotPassword()">Forgot Password?</span>
-              </div>
-              
-              <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;">Request OTP via EmailJS</button>
-              
-              <div style="text-align:center; margin:15px 0; color:var(--text-secondary); font-size:0.85rem;">- OR -</div>
-              
-              <button type="button" class="btn btn-outline ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;" onclick="handleAuth(event, 'citizen_pwd')">Login with Password</button>
+      <section class="scroll-anim scroll-fade-up" style="background: var(--bg-surface); border-top: 1px solid var(--border); padding: 5rem 0;">
+        <div class="container">
+          <div class="section-title">
+            <h2>How CiviSync Works</h2>
+            <p>A seamless, transparent loop from the moment an issue is spotted to the moment it's resolved.</p>
+          </div>
+          <div class="grid-4" style="position: relative;">
+            
+            <div class="step-card scroll-anim scroll-slide-right stagger-1">
+              <div class="step-number">1</div>
+              <h4 style="margin-bottom: 0.5rem;">Spot & Report</h4>
+              <p class="text-muted text-sm">Upload a photo, describe the issue via text or voice, and let GPS pinpoint the exact location.</p>
             </div>
             
-            <div id="cit-login-step-2" class="hidden">
-              <p class="text-sm text-success" style="margin-bottom:1rem; font-weight:600;">✅ EmailJS OTP Sent successfully!</p>
-              <div class="form-group">
-                <label class="form-label">Enter 4-Digit OTP</label>
-                <input type="text" id="cit-login-otp" class="form-control" placeholder="1234">
+            <div class="step-card scroll-anim scroll-slide-right stagger-2">
+              <div class="step-number">2</div>
+              <h4 style="margin-bottom: 0.5rem;">AI Categorization</h4>
+              <p class="text-muted text-sm">The system auto-detects the issue type and flags high-priority hazards.</p>
+            </div>
+            
+            <div class="step-card scroll-anim scroll-slide-right stagger-3">
+              <div class="step-number">3</div>
+              <h4 style="margin-bottom: 0.5rem;">Authority Action</h4>
+              <p class="text-muted text-sm">City admins receive the routed ticket on their dashboard and allocate budgets or deploy teams.</p>
+            </div>
+            
+            <div class="step-card scroll-anim scroll-slide-right stagger-4">
+              <div class="step-number">4</div>
+              <h4 style="margin-bottom: 0.5rem;">Transparent Update</h4>
+              <p class="text-muted text-sm">Citizens get notified, the audit log is updated, and the interactive map reflects the fix.</p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="stats-section scroll-anim scroll-scale-up">
+        <div class="container">
+          <div class="grid-3">
+            <div class="stat-block scroll-anim scroll-fade-up stagger-1">
+              <h3>48h</h3>
+              <p class="font-medium text-muted">Average Resolution Time</p>
+            </div>
+            <div class="stat-block scroll-anim scroll-fade-up stagger-2">
+              <h3>12,450+</h3>
+              <p class="font-medium text-muted">Issues Successfully Resolved</p>
+            </div>
+            <div class="stat-block scroll-anim scroll-fade-up stagger-3">
+              <h3>85%</h3>
+              <p class="font-medium text-muted">Increase in Citizen Trust</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scroll-anim scroll-fade-up" style="padding: 5rem 2rem; text-align: center;">
+        <h2 style="font-size: 2.25rem; margin-bottom: 1rem;">Ready to transform your city?</h2>
+        <p class="text-muted" style="margin-bottom: 2rem;">Join thousands of citizens actively improving their neighborhoods today.</p>
+        <button class="btn btn-blue ripple-element" style="padding: 1rem 2.5rem; font-size: 1.1rem; border-radius: 50px; animation: pulse-shadow 2s infinite;" onclick="navigate('auth')">Create Your Citizen Account</button>
+      </section>
+
+      <footer class="footer scroll-anim scroll-fade-in">
+        <div class="footer-grid">
+          <div>
+            <div class="nav-brand" style="color: white; margin-bottom: 1rem;">
+              <img src="https://cdn-icons-png.flaticon.com/512/2942/2942821.png" alt="Logo" style="height:35px; margin-right:8px; filter: brightness(0) invert(1);"> 
+              CiviSync
+            </div>
+            <p class="text-sm" style="line-height: 1.6; max-width: 300px;">A comprehensive, transparent, and AI-driven platform designed to bridge the gap between citizens, NGOs, and municipal authorities.</p>
+          </div>
+          <div>
+            <h4 class="footer-heading">Platform</h4>
+            <ul class="footer-links text-sm">
+              <li><a href="#" onclick="navigate('report')">Report Issue</a></li>
+              <li><a href="#" onclick="navigate('track')">Track Dashboard</a></li>
+              <li><a href="#" onclick="navigate('auth')">Admin Portal</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="footer-heading">Resources</h4>
+            <ul class="footer-links text-sm">
+              <li><a href="#" onclick="navigate('about')">About Us</a></li>
+              <li><a href="#" onclick="navigate('guidelines')">City Guidelines</a></li>
+              <li><a href="#" onclick="navigate('faq')" style="color: var(--primary-light); font-weight: bold;">FAQ / Help Center</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="footer-heading">Contact</h4>
+            <ul class="footer-links text-sm">
+              <li>support@civisync.gov</li>
+              <li>Emergency: 911</li>
+              <li>Non-Emergency: 311</li>
+            </ul>
+          </div>
+        </div>
+        <div style="text-align: center; padding-top: 2rem; font-size: 0.875rem;">
+          &copy; 2026 CiviSync Platform. All rights reserved.
+        </div>
+      </footer>
+    </div>
+
+    <div id="view-faq" class="view container">
+      <div style="text-align: center; margin-bottom: 3rem;">
+        <h2>Frequently Asked Questions</h2>
+        <p class="text-muted mt-2">Everything you need to know about using CiviSync.</p>
+      </div>
+      <div class="card" style="max-width: 800px; margin: 0 auto; padding: 2rem;">
+        
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFAQ(this)">
+            <span>How does the AI Categorization work?</span>
+            <span class="faq-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            When you type or dictate your issue description, our local AI system scans the text for keywords (like "pipe", "dark", or "pothole"). It automatically assigns the correct category and routes it to the specific municipal department responsible for that area, completely bypassing human triage times.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFAQ(this)">
+            <span>What happens if an issue is delayed due to budget?</span>
+            <span class="faq-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            Unlike traditional systems where your ticket gets lost, CiviSync maintains full transparency. The issue status will change to "Pending Budget Constraint." At this point, it is sent to the NGO Hub where community organizations can officially "Adopt" the project and pledge private funds or volunteer hours to fix it.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFAQ(this)">
+            <span>How do I earn Civic Points?</span>
+            <span class="faq-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            You earn points by actively participating in the platform. Reporting a valid issue grants 10 points. Volunteering for an NGO project grants 50 points. Once you reach certain milestones (like 500 points), you unlock badges and can redeem your points for city rewards like Metro Passes or Library Access.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFAQ(this)">
+            <span>What is the Government Escalation Portal?</span>
+            <span class="faq-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            CiviSync tracks the Service Level Agreements (SLAs) for every department. If a pothole remains unfixed for 7 days, it automatically triggers a Level 2 Escalation to the Municipal Head. If it hits 15 days, it becomes a Level 3 Escalation and is sent directly to state-level officials on their dedicated portal.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFAQ(this)">
+            <span>Is my data secure?</span>
+            <span class="faq-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            Yes. CiviSync uses Supabase for enterprise-grade database security with Row Level Security (RLS) policies. Your password is never stored in plain text, and you can opt to use secure Social Logins (Google/Facebook/LinkedIn) or our EmailJS OTP system for passwordless entry.
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="view-auth" class="view container">
+      <div style="max-width: 550px; margin: 3rem auto;">
+        <div class="auth-card">
+          
+          <div style="display: flex; margin-bottom: 2rem; border-bottom: 2px solid var(--bg-app); padding-bottom: 0.5rem; overflow-x: auto;">
+            <button class="btn ripple-element" style="flex:1; background:none; color:var(--primary); font-weight:700; font-size:0.9rem; border-bottom: 3px solid var(--primary); border-radius:0; white-space:nowrap;" id="tab-cit" onclick="switchAuthTab('citizen')">Citizen</button>
+            <button class="btn ripple-element" style="flex:1; background:none; color:var(--text-secondary); font-weight:600; font-size:0.9rem; border-bottom: 3px solid transparent; border-radius:0; white-space:nowrap;" id="tab-adm" onclick="switchAuthTab('admin')">Authority</button>
+            <button class="btn ripple-element" style="flex:1; background:none; color:var(--text-secondary); font-weight:600; font-size:0.9rem; border-bottom: 3px solid transparent; border-radius:0; white-space:nowrap;" id="tab-gov" onclick="switchAuthTab('gov')">Govt</button>
+            <button class="btn ripple-element" style="flex:1; background:none; color:var(--text-secondary); font-weight:600; font-size:0.9rem; border-bottom: 3px solid transparent; border-radius:0; white-space:nowrap;" id="tab-super" onclick="switchAuthTab('super')">Admin</button>
+          </div>
+
+          <div id="area-cit" class="auth-animate">
+            <div class="auth-sub-tabs" style="display:flex; background:var(--bg-app); border-radius:var(--radius-md); padding:0.35rem; margin-bottom:1.5rem;">
+              <button id="btn-login-cit" class="active ripple-element" style="flex:1; padding:0.75rem; border:none; border-radius:var(--radius-sm); font-weight:600; background:var(--bg-surface); color:var(--primary); box-shadow:var(--shadow-sm);" onclick="toggleCitAuth('login')">Log In</button>
+              <button id="btn-reg-cit" class="ripple-element" style="flex:1; padding:0.75rem; border:none; border-radius:var(--radius-sm); font-weight:600; background:transparent; color:var(--text-secondary);" onclick="toggleCitAuth('register')">Register</button>
+            </div>
+
+            <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem;">
+              <button type="button" class="btn social-btn ripple-element" style="flex:1;" onclick="socialLogin('google')">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
+              </button>
+              <button type="button" class="btn social-btn ripple-element" style="flex:1;" onclick="socialLogin('facebook')">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" alt="FB">
+              </button>
+              <button type="button" class="btn social-btn ripple-element" style="flex:1;" onclick="socialLogin('linkedin_oidc')">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png" alt="LinkedIn">
+              </button>
+            </div>
+            
+            <div style="text-align:center; color:var(--text-secondary); font-size:0.8rem; margin-bottom:1.5rem;">OR CONTINUE WITH EMAIL / MOBILE OTP</div>
+
+            <form id="form-cit-login" class="auth-animate" onsubmit="handleCitizenOTPFlow(event)">
+              <div id="cit-login-step-1">
+                <div class="form-group">
+                  <label class="form-label">Registered Email</label>
+                  <input type="email" id="cit-login-identifier" class="form-control" placeholder="citizen@city.com" required>
+                </div>
+                
+                <div class="form-group" style="position:relative;">
+                  <label class="form-label">Secure Password (Optional if using OTP)</label>
+                  <input type="password" class="form-control" id="cit-login-pwd" placeholder="••••••••">
+                  <span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('cit-login-pwd')">👁️</span>
+                </div>
+                
+                <div style="text-align: right; margin-bottom: 1.5rem;">
+                  <span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600;" onclick="openForgotPassword()">Forgot Password?</span>
+                </div>
+                
+                <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;">Request OTP via EmailJS</button>
+                
+                <div style="text-align:center; margin:15px 0; color:var(--text-secondary); font-size:0.85rem;">- OR -</div>
+                
+                <button type="button" class="btn btn-outline ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;" onclick="handleAuth(event, 'citizen_pwd')">Login with Password</button>
               </div>
-              <button type="button" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;" onclick="verifyCitizenOTP()">Verify & Secure Login</button>
               
-              <div style="display:flex; justify-content:space-between; margin-top: 15px;">
-                <span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline;" onclick="reEnterEmail()">Change Email</span>
-                <span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline;" onclick="resendOTP()">Resend OTP</span>
+              <div id="cit-login-step-2" class="hidden">
+                <p class="text-sm text-success" style="margin-bottom:1rem; font-weight:600;">✅ EmailJS OTP Sent successfully!</p>
+                <div class="form-group">
+                  <label class="form-label">Enter 4-Digit OTP</label>
+                  <input type="text" id="cit-login-otp" class="form-control" placeholder="1234">
+                </div>
+                <button type="button" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;" onclick="verifyCitizenOTP()">Verify & Secure Login</button>
+                
+                <div style="display:flex; justify-content:space-between; margin-top: 15px;">
+                  <span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline;" onclick="reEnterEmail()">Change Email</span>
+                  <span style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline;" onclick="resendOTP()">Resend OTP</span>
+                </div>
               </div>
+            </form>
+
+            <form id="form-cit-register" class="hidden auth-animate" onsubmit="handleAuth(event, 'citizen_register')">
+              <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-control" required placeholder="E.g. Prakhar">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control" required placeholder="prakhar@example.com">
+              </div>
+              <div class="form-group" style="position:relative;">
+                <label class="form-label">Create Password</label>
+                <input type="password" class="form-control" id="cit-reg-pwd" required>
+                <span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('cit-reg-pwd')">👁️</span>
+              </div>
+              <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;">Create Account</button>
+            </form>
+          </div>
+
+          <form id="form-adm" class="hidden auth-animate" onsubmit="handleAuth(event, 'admin')">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.5rem;">Authority Access 🛡️</h3>
+            <div class="form-group">
+              <label class="form-label">Admin Email</label>
+              <input type="email" class="form-control" placeholder="admin@city.gov" required>
             </div>
+            <div class="form-group" style="position:relative;">
+              <label class="form-label">Master Password</label>
+              <input type="password" class="form-control" id="adm-login-pwd" required>
+              <span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('adm-login-pwd')">👁️</span>
+            </div>
+            <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px; background: linear-gradient(90deg, #1e3a8a, #3b82f6);">Access Dashboard</button>
+          </form>
+          
+          <form id="form-gov" class="hidden auth-animate" onsubmit="handleAuth(event, 'gov')">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.5rem; color: #ea580c;">Government Action Portal 🏛️</h3>
+            <div class="form-group">
+              <label class="form-label">Official Role</label>
+              <select class="form-control" id="gov-role" required>
+                <option value="Ward Officer">Ward Officer</option>
+                <option value="Municipal Officer">Municipal Officer</option>
+                <option value="District Admin">District Admin</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Government Email</label>
+              <input type="email" value="gov@state.in" class="form-control" required>
+            </div>
+            <div class="form-group" style="position:relative;">
+              <label class="form-label">Secure PIN / Password</label>
+              <input type="password" class="form-control" id="gov-login-pwd" value="gov123" required>
+              <span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('gov-login-pwd')">👁️</span>
+            </div>
+            <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px; background: #0f172a;">Verify & Enter Portal</button>
           </form>
 
-          <form id="form-cit-register" class="hidden auth-animate" onsubmit="handleAuth(event, 'citizen_register')">
-            <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-control" required placeholder="E.g. Prakhar"></div>
-            <div class="form-group"><label class="form-label">Email Address</label><input type="email" class="form-control" required placeholder="prakhar@example.com"></div>
-            <div class="form-group" style="position:relative;"><label class="form-label">Create Password</label><input type="password" class="form-control" id="cit-reg-pwd" required><span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('cit-reg-pwd')">👁️</span></div>
-            <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px;">Create Account</button>
+          <form id="form-super" class="hidden auth-animate" onsubmit="handleAuth(event, 'super')">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.5rem; color: #10b981;">System Oversight 👁️</h3>
+            <div class="form-group">
+              <label class="form-label">Super Admin Email</label>
+              <input type="email" class="form-control" placeholder="super@admin.com" required>
+            </div>
+            <div class="form-group" style="position:relative;">
+              <label class="form-label">Root Password</label>
+              <input type="password" class="form-control" id="super-login-pwd" required>
+              <span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('super-login-pwd')">👁️</span>
+            </div>
+            <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px; background: #10b981; color:white;">Access Audit Logs</button>
           </form>
         </div>
-
-        <form id="form-adm" class="hidden auth-animate" onsubmit="handleAuth(event, 'admin')">
-          <h3 style="margin-bottom: 1.5rem; font-size: 1.5rem;">Authority Access 🛡️</h3>
-          <div class="form-group"><label class="form-label">Admin Email</label><input type="email" class="form-control" placeholder="admin@city.gov" required></div>
-          <div class="form-group" style="position:relative;"><label class="form-label">Master Password</label><input type="password" class="form-control" id="adm-login-pwd" required><span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('adm-login-pwd')">👁️</span></div>
-          <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px; background: linear-gradient(90deg, #1e3a8a, #3b82f6);">Access Dashboard</button>
-        </form>
-
-        <form id="form-gov" class="hidden auth-animate" onsubmit="handleAuth(event, 'gov')">
-          <h3 style="margin-bottom: 1.5rem; font-size: 1.5rem; color: #ea580c;">Government Action Portal 🏛️</h3>
-          <div class="form-group">
-            <label class="form-label">Official Role</label>
-            <select class="form-control" id="gov-role" required>
-              <option value="Ward Officer">Ward Officer</option>
-              <option value="Municipal Officer">Municipal Officer</option>
-              <option value="District Admin">District Admin</option>
-            </select>
-          </div>
-          <div class="form-group"><label class="form-label">Government Email</label><input type="email" value="gov@state.in" class="form-control" required></div>
-          <div class="form-group" style="position:relative;"><label class="form-label">Secure PIN / Password</label><input type="password" class="form-control" id="gov-login-pwd" value="gov123" required><span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('gov-login-pwd')">👁️</span></div>
-          <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px; background: #0f172a;">Verify & Enter Portal</button>
-        </form>
-
-        <form id="form-super" class="hidden auth-animate" onsubmit="handleAuth(event, 'super')">
-          <h3 style="margin-bottom: 1.5rem; font-size: 1.5rem; color: #10b981;">System Oversight 👁️</h3>
-          <div class="form-group"><label class="form-label">Super Admin Email</label><input type="email" class="form-control" placeholder="super@admin.com" required></div>
-          <div class="form-group" style="position:relative;"><label class="form-label">Root Password</label><input type="password" class="form-control" id="super-login-pwd" required><span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('super-login-pwd')">👁️</span></div>
-          <button type="submit" class="btn btn-blue ripple-element" style="width: 100%; padding: 0.9rem; font-size: 1rem; border-radius: 50px; background: #10b981; color:white;">Access Audit Logs</button>
-        </form>
       </div>
     </div>
-  </div>
 
-  <div id="view-about" class="view container">
-    <div style="text-align: center; margin-bottom: 3rem;">
-      <h2 style="font-size: 2.5rem; color: var(--primary);">About CiviSync</h2>
-      <p class="text-muted mt-2">Bridging the gap between the community and municipal authorities.</p>
-    </div>
-    <div class="grid-2">
-      <div class="card">
-        <h3 style="margin-bottom: 1rem; color: var(--primary);">Our Mission</h3>
-        <p class="text-muted" style="line-height: 1.8;">CiviSync was built with a simple goal: to make urban management transparent, efficient, and community-driven. By leveraging AI to categorize reports, transparent budget tracking to explain delays, and real-time mapping, we empower every citizen to take an active role in bettering their environment.</p>
+    <div id="view-about" class="view container">
+      <div style="text-align: center; margin-bottom: 3rem;">
+        <h2 style="font-size: 2.5rem; color: var(--primary);">About CiviSync</h2>
+        <p class="text-muted mt-2">Bridging the gap between the community and municipal authorities.</p>
       </div>
-      <div class="card">
-        <h3 style="margin-bottom: 1rem; color: var(--purple);">Our Vision</h3>
-        <p class="text-muted" style="line-height: 1.8;">We envision a future where civic issues are resolved dynamically through a combination of automated government workflows and passionate NGO interventions. No more lost paperwork, no more endless waiting.</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-bottom: 1rem; color: var(--primary);">Our Mission</h3>
+          <p class="text-muted" style="line-height: 1.8;">CiviSync was built with a simple goal: to make urban management transparent, efficient, and community-driven. By leveraging AI to categorize reports, transparent budget tracking to explain delays, and real-time mapping, we empower every citizen to take an active role in bettering their environment.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom: 1rem; color: var(--purple);">Our Vision</h3>
+          <p class="text-muted" style="line-height: 1.8;">We envision a future where civic issues are resolved dynamically through a combination of automated government workflows and passionate NGO interventions. No more lost paperwork, no more endless waiting.</p>
+        </div>
       </div>
-    </div>
-    <div class="card" style="margin-top:2rem;">
-      <h3 style="margin-bottom: 1rem;">Why Choose CiviSync?</h3>
-      <ul style="list-style: none; color: var(--text-secondary); line-height: 2;">
-        <li>✅ <strong>AI Eliminates Bureaucracy:</strong> Automatically routing issues to the correct department.</li>
-        <li>✅ <strong>Immutable Audit Trails:</strong> Ensuring transparency in how your tax dollars are spent.</li>
-        <li>✅ <strong>NGO & Volunteer Hub:</strong> Allowing the community to step up when government budgets are tight.</li>
-        <li>✅ <strong>Gamified Impact:</strong> Rewarding citizens for taking pride in their neighborhoods.</li>
-      </ul>
-    </div>
-  </div>
-
-  <div id="view-guidelines" class="view container">
-    <div style="text-align: center; margin-bottom: 3rem;">
-      <h2>City Reporting Guidelines</h2>
-      <p class="text-muted mt-2">How to accurately report issues for the fastest resolution.</p>
-    </div>
-    <div class="grid-2">
-      <div class="card">
-        <h3 style="color: var(--success); margin-bottom: 1rem;">✅ DO:</h3>
-        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.8rem; color: var(--text-secondary); line-height:1.6;">
-          <li>📸 <strong>Take Clear Photos:</strong> Ensure the issue is visible, well-lit, and provides context to the surroundings.</li>
-          <li>📍 <strong>Use Exact Locations:</strong> Rely on the Auto-Locate GPS feature whenever possible to dispatch crews accurately.</li>
-          <li>📝 <strong>Be Descriptive:</strong> Mention size, severity, and potential safety risks (e.g., "Deep 2ft pothole causing tire damage").</li>
-          <li>🔍 <strong>Check for Duplicates:</strong> Browse the Track page to see if your neighbor already reported it. Upvote theirs instead!</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3 style="color: var(--danger); margin-bottom: 1rem;">❌ DON'T:</h3>
-        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.8rem; color: var(--text-secondary); line-height:1.6;">
-          <li>🚨 <strong>Report Emergencies Here:</strong> For fires, immediate crimes, or medical emergencies, dial 911 immediately.</li>
-          <li>🚗 <strong>Submit Blurred Photos:</strong> Images taken from moving cars are often rejected by our AI verification.</li>
-          <li>🤬 <strong>Use Offensive Language:</strong> Descriptions are public and moderation will result in an account ban.</li>
-          <li>🔄 <strong>Spam the System:</strong> Submitting the exact same issue multiple times slows down the entire department.</li>
+      <div class="card" style="margin-top:2rem;">
+        <h3 style="margin-bottom: 1rem;">Why Choose CiviSync?</h3>
+        <ul style="list-style: none; color: var(--text-secondary); line-height: 2;">
+          <li>✅ <strong>AI Eliminates Bureaucracy:</strong> Automatically routing issues to the correct department.</li>
+          <li>✅ <strong>Immutable Audit Trails:</strong> Ensuring transparency in how your tax dollars are spent.</li>
+          <li>✅ <strong>NGO & Volunteer Hub:</strong> Allowing the community to step up when government budgets are tight.</li>
+          <li>✅ <strong>Gamified Impact:</strong> Rewarding citizens for taking pride in their neighborhoods.</li>
         </ul>
       </div>
     </div>
-  </div>
 
-  <div id="view-leaderboard" class="view container">
-    <div style="text-align: center; margin-bottom: 3rem;">
-      <h2>🏆 Civic Leaderboard</h2>
-      <p class="text-muted mt-2">Recognizing our most active and helpful community members.</p>
-    </div>
-    <div class="card" style="max-width: 800px; margin: 0 auto; overflow: hidden; padding: 0;">
-      <table style="width: 100%; border-collapse: collapse; text-align: left;">
-        <thead style="background: var(--bg-app);">
-          <tr>
-            <th style="padding: 1.5rem; color: var(--text-secondary);">Rank</th>
-            <th style="padding: 1.5rem; color: var(--text-secondary);">Citizen / NGO</th>
-            <th style="padding: 1.5rem; color: var(--text-secondary);">Issues Fixed</th>
-            <th style="padding: 1.5rem; color: var(--text-secondary);">Civic Points</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="padding: 1.5rem; font-size: 1.5rem;">🥇</td>
-            <td style="padding: 1.5rem; font-weight: bold;">Green Earth Org</td>
-            <td style="padding: 1.5rem;">42</td>
-            <td style="padding: 1.5rem; color: var(--warning); font-weight: bold;">4,200</td>
-          </tr>
-          <tr>
-            <td style="padding: 1.5rem; font-size: 1.5rem;">🥈</td>
-            <td style="padding: 1.5rem; font-weight: bold;">Sarah Jenkins</td>
-            <td style="padding: 1.5rem;">28</td>
-            <td style="padding: 1.5rem; color: var(--warning); font-weight: bold;">2,850</td>
-          </tr>
-          <tr>
-            <td style="padding: 1.5rem; font-size: 1.5rem;">🥉</td>
-            <td style="padding: 1.5rem; font-weight: bold;">Marcus T.</td>
-            <td style="padding: 1.5rem;">19</td>
-            <td style="padding: 1.5rem; color: var(--warning); font-weight: bold;">1,900</td>
-          </tr>
-          <tr style="background: var(--primary-light);">
-            <td style="padding: 1.5rem; font-weight: bold; color: var(--primary);">4</td>
-            <td style="padding: 1.5rem; font-weight: bold; color: var(--primary);" id="lb-current-user">You</td>
-            <td style="padding: 1.5rem; color: var(--primary);" id="lb-current-issues">0</td>
-            <td style="padding: 1.5rem; color: var(--primary); font-weight: bold;" id="lb-current-points">0</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div id="view-points" class="view container">
-    <div style="text-align: center; margin-bottom: 2rem;">
-      <h2>⭐ Community & Rewards</h2>
-      <p class="text-muted text-sm">Earn points for bettering your city and redeem them for rewards.</p>
-    </div>
-    <div class="grid-2">
-      <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
-        <h3 class="text-muted">Your Civic Points</h3>
-        <h1 style="font-size: 5rem; color: var(--warning); margin: 1rem 0;"><span id="manage-pts">0</span></h1>
-        <button class="btn btn-blue ripple-element" style="border-radius:50px; padding:0.75rem 2rem; align-self: center;" onclick="navigate('ngo')">View Volunteer Opportunities</button>
-        
-        <div style="text-align: left; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
-          <h4 style="margin-bottom: 1rem;">Redeem Rewards</h4>
-          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); padding:1rem; border-radius:var(--radius-md); margin-bottom:1rem; cursor: pointer;">
-            <div><strong>1 Day Free Metro Pass</strong><div class="text-xs text-muted">Valid across all lines</div></div>
-            <button class="btn btn-outline ripple-element" style="border-radius: 50px;" onclick="redeemReward(50, 'Metro Pass')">50 pts</button>
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); padding:1rem; border-radius:var(--radius-md); margin-bottom:1rem; cursor: pointer;">
-            <div><strong>Public Library Premium Access</strong><div class="text-xs text-muted">Skip the queues</div></div>
-            <button class="btn btn-outline ripple-element" style="border-radius: 50px;" onclick="redeemReward(100, 'Library Pass')">100 pts</button>
-          </div>
-        </div>
+    <div id="view-guidelines" class="view container">
+      <div style="text-align: center; margin-bottom: 3rem;">
+        <h2>City Reporting Guidelines</h2>
+        <p class="text-muted mt-2">How to accurately report issues for the fastest resolution.</p>
       </div>
-      
-      <div class="card" style="max-height: 550px; overflow-y: auto;">
-        <h3 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Points History Logs</h3>
-        <div id="points-history-list" style="display: flex; flex-direction: column; gap: 0.8rem; font-size: 0.85rem;">
-          </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="view-profile" class="view container">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem;">
-      <h2>👤 My Profile</h2>
-      <button class="btn btn-outline ripple-element" onclick="navigate('settings')" style="border-radius:50px;">✏️ Edit Details</button>
-    </div>
-    <div class="grid-2">
-      <div class="card profile-card-anim" style="text-align: center; padding: 3rem 1.5rem;">
-        <div id="prof-avatar" style="width: 100px; height: 100px; background: linear-gradient(135deg, var(--primary), var(--purple)); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; margin: 0 auto 1.5rem; box-shadow: var(--shadow-md);">U</div>
-        <h2 id="prof-name" style="margin-bottom: 0.5rem;">User Name</h2>
-        <p id="prof-email" class="text-muted" style="margin-bottom: 1.5rem;">user@email.com</p>
-        <p id="prof-phone" style="font-weight: 600; margin-top: 10px; color: var(--primary);"></p>
-        <p id="prof-bio" class="text-sm text-muted" style="margin-top: 10px; font-style: italic;"></p>
-        <div class="badge badge-in-progress" id="prof-role-badge" style="margin-top: 15px;">Citizen</div>
-        <button class="btn btn-primary ripple-element mt-4" style="width:100%; border-radius:8px;" onclick="navigate('settings')">Manage Database Settings</button>
-      </div>
-      
-      <div class="card profile-card-anim">
-        <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Civic Impact & Badges</h3>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1rem; background: var(--bg-app); border-radius: var(--radius-md);">
-          <span class="text-muted font-medium">Total Points Earned</span><strong id="prof-pts" style="color: var(--warning); font-size: 1.5rem;">0</strong>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="color: var(--success); margin-bottom: 1rem;">✅ DO:</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.8rem; color: var(--text-secondary); line-height:1.6;">
+            <li>📸 <strong>Take Clear Photos:</strong> Ensure the issue is visible, well-lit, and provides context to the surroundings.</li>
+            <li>📍 <strong>Use Exact Locations:</strong> Rely on the Auto-Locate GPS feature whenever possible to dispatch crews accurately.</li>
+            <li>📝 <strong>Be Descriptive:</strong> Mention size, severity, and potential safety risks.</li>
+            <li>🔍 <strong>Check for Duplicates:</strong> Browse the Track page to see if your neighbor already reported it. Upvote theirs instead!</li>
+          </ul>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-md);">
-          <span class="text-muted font-medium">Issues Reported</span><strong id="prof-reported" style="font-size: 1.5rem;">0</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1rem; background: var(--purple-bg); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: var(--radius-md);">
-          <span class="text-purple font-medium">Volunteered Projects</span><strong id="prof-vol" style="color: var(--purple); font-size: 1.5rem;">0</strong>
-        </div>
-        
-        <div id="badge-container" class="hidden" style="text-align:center; padding: 1.5rem; background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 2px solid #f59e0b; border-radius: var(--radius-lg); margin-top: 1.5rem;">
-          <div style="font-size: 3rem; margin-bottom:0.5rem;">🏆</div>
-          <h4 style="color:#b45309;">Neighborhood Hero</h4>
-          <p class="text-xs text-muted" style="margin-bottom:1rem;">Unlocked at 500 Civic Points</p>
-          <button class="btn ripple-element" style="background:#0a66c2; color:white; font-size:0.75rem; border-radius:50px;">Share to LinkedIn</button>
+        <div class="card">
+          <h3 style="color: var(--danger); margin-bottom: 1rem;">❌ DON'T:</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.8rem; color: var(--text-secondary); line-height:1.6;">
+            <li>🚨 <strong>Report Emergencies Here:</strong> For fires, immediate crimes, or medical emergencies, dial 911 immediately.</li>
+            <li>🚗 <strong>Submit Blurred Photos:</strong> Images taken from moving cars are often rejected by our AI verification.</li>
+            <li>🤬 <strong>Use Offensive Language:</strong> Descriptions are public and moderation will result in an account ban.</li>
+            <li>🔄 <strong>Spam the System:</strong> Submitting the exact same issue multiple times slows down the entire department.</li>
+          </ul>
         </div>
       </div>
     </div>
-  </div>
 
-  <div id="view-settings" class="view container">
-    <div style="margin-bottom: 2rem;"><h2>⚙️ Account & Database Sync</h2></div>
-    <div class="card" style="max-width: 700px; margin:0 auto;">
-      
-      <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Profile Information (Synced to Cloud)</h3>
-      <p class="text-xs text-muted" style="margin-bottom: 1rem;">Information here will be pushed directly to your Supabase User Table.</p>
-      
-      <div class="form-group">
-        <label class="form-label">Phone Number</label>
-        <input type="text" id="set-phone" class="form-control" placeholder="+91 99999 99999">
+    <div id="view-leaderboard" class="view container">
+      <div style="text-align: center; margin-bottom: 3rem;">
+        <h2>🏆 Civic Leaderboard</h2>
+        <p class="text-muted mt-2">Recognizing our most active and helpful community members.</p>
       </div>
-      
-      <div class="form-group">
-        <label class="form-label">Bio / Organization Details</label>
-        <textarea id="set-bio" class="form-control" placeholder="Tell us about yourself..."></textarea>
-      </div>
-
-      <h3 style="margin-bottom: 1.5rem; margin-top:2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Smart Notification System</h3>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <div><strong>📧 Email Alerts</strong><p class="text-xs text-muted">Receive updates via EmailJS.</p></div>
-        <label class="toggle-switch"><input type="checkbox" id="set-email-alert" checked><span class="slider"></span></label>
-      </div>
-
-      <button class="btn btn-blue ripple-element" style="width: 100%; border-radius: 50px; margin-top: 1rem;" onclick="saveSettingsToDB()">Save & Push to Database ☁️</button>
-    </div>
-  </div>
-
-  <div id="view-report" class="view container">
-    <div style="text-align: center; margin-bottom: 2rem;">
-      <h2 style="color: var(--primary); text-transform: uppercase; letter-spacing: 2px;">📝 Intelligent Issue Uplink</h2>
-      <p class="text-muted text-sm mt-2">Powered by AI Categorization & Satellite Geo-Tracking</p>
-    </div>
-
-    <div class="report-stepper">
-      <div class="step active" id="step-1-ind">1. Geo-Location</div>
-      <div class="step" id="step-2-ind">2. Details</div>
-      <div class="step" id="step-3-ind">3. Media</div>
-    </div>
-
-    <div class="card tech-card" style="max-width: 800px; margin: 0 auto; overflow:hidden; position:relative; min-height: 450px;">
-      <form onsubmit="submitReport(event)" id="interactive-report-form">
-        
-        <div class="form-step" id="form-step-1">
-           <div class="form-group">
-              <label class="form-label" style="color: var(--primary);">📍 GPS Coordinates</label>
-              <div style="display: flex; gap: 1rem;">
-                <input type="text" id="repLoc" class="form-control tech-input" placeholder="Awaiting GPS Lock..." readonly required>
-                <button type="button" class="btn btn-blue ripple-element" id="btn-gps" onclick="getLocationWithAnim()">📡 Scan Satellites</button>
-              </div>
-           </div>
-           <button type="button" class="btn btn-outline" style="width:100%; border-color: var(--primary); color: var(--primary);" onclick="nextReportStep(2)">Proceed to Details ➔</button>
-        </div>
-
-        <div class="form-step hidden" id="form-step-2" style="transform: translateX(100%);">
-           <div class="form-group">
-             <label class="form-label">Issue Designation</label>
-             <input type="text" id="repTitle" class="form-control tech-input" placeholder="e.g. Subterranean Pipe Burst">
-           </div>
-           <div class="form-group" style="position:relative;">
-             <label class="form-label">AI Analyzed Description (Voice Enabled)</label>
-             <textarea id="repDesc" class="form-control tech-input" oninput="triggerAICategorization()"></textarea>
-             <button type="button" class="mic-btn ripple-element" id="btnMic" onclick="startDictation()">🎤</button>
-           </div>
-           <div class="form-group" style="position: relative;">
-             <label class="form-label">System Category Lock</label>
-             <select id="repCat" class="form-control tech-input">
-               <option value="Pothole">Pothole / Roadway</option>
-               <option value="Water Leak">Water Systems</option>
-               <option value="Electrical">Electrical Grid</option>
-               <option value="Garbage">Sanitation</option>
-               <option value="Drainage">Drainage</option>
-               <option value="Traffic">Traffic</option>
-             </select>
-             <span id="aiTag" class="ai-tag">✨ AI Locked</span>
-           </div>
-           <div style="display:flex; gap:1rem;">
-             <button type="button" class="btn btn-outline" style="flex:1;" onclick="nextReportStep(1)">⬅ Back</button>
-             <button type="button" class="btn btn-outline" style="flex:1; border-color: var(--primary); color: var(--primary);" onclick="nextReportStep(3)">Attach Evidence ➔</button>
-           </div>
-        </div>
-
-        <div class="form-step hidden" id="form-step-3" style="transform: translateX(100%);">
-           <div class="form-group">
-            <label class="form-label">Visual Evidence Upload</label>
-            <div class="file-upload-box tech-upload" onclick="document.getElementById('repFile').click()">
-              <input type="file" id="repFile" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
-              <div class="animated-icon scanner-line" style="font-size: 3rem; margin-bottom: 10px;">📸</div>
-              <p class="font-medium">Click to initialize image uplink</p>
-              <p id="uploadStatus" class="text-success text-sm font-bold mt-2"></p>
-            </div>
-          </div>
-          <div style="display:flex; gap:1rem;">
-             <button type="button" class="btn btn-outline" style="flex:1;" onclick="nextReportStep(2)">⬅ Back</button>
-             <button type="submit" class="btn btn-success ripple-element" style="flex:2; box-shadow: 0 0 15px var(--success);">🚀 Execute Final Upload</button>
-           </div>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="view-track" class="view container">
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem;">
-      <div>
-        <h2>📋 Track Issues & Advisories</h2>
-        <p class="text-muted text-sm" style="margin-top: 0.25rem;">Monitor issue status, budget approvals, and temporary safety actions.</p>
-      </div>
-      <div style="display: flex; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.25rem; box-shadow: var(--shadow-sm);">
-        <button class="btn" id="btn-list-view" style="background: var(--bg-app); color: var(--primary); font-weight:600;" onclick="switchTrackView('list')">Grid View</button>
-        <button class="btn" id="btn-map-view" style="background: transparent; color: var(--text-secondary);" onclick="switchTrackView('map')">Map View</button>
-      </div>
-    </div>
-    <div class="filter-bar">
-      <div style="flex: 1; display: flex; align-items: center; background: var(--bg-app); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0 1rem;">
-        <span>🔍</span><input type="text" id="trackSearch" placeholder="Search issues..." style="border:none; background:transparent; width:100%; padding:0.875rem; outline:none; color:var(--text-primary);" oninput="renderTrack()">
-      </div>
-      <select id="trackCatFilter" class="form-control" style="width: 200px;" onchange="renderTrack()">
-        <option value="">All Categories</option>
-        <option value="Pothole">Pothole</option>
-        <option value="Water Leak">Water Leak</option>
-        <option value="Electrical">Electrical</option>
-        <option value="Garbage">Garbage</option>
-        <option value="Drainage">Drainage</option>
-        <option value="Traffic">Traffic</option>
-      </select>
-    </div>
-    <div class="tabs-pill" style="margin-bottom: 1.5rem; display: inline-flex;">
-      <div class="tab-pill active ripple-element" onclick="setTrackTab('All', this)">All <span id="cnt-all" style="margin-left:0.5rem; opacity:0.7;">0</span></div>
-      <div class="tab-pill ripple-element" onclick="setTrackTab('pending', this)">Pending <span id="cnt-pen" style="margin-left:0.5rem; opacity:0.7;">0</span></div>
-      <div class="tab-pill ripple-element" onclick="setTrackTab('in progress', this)">In Progress <span id="cnt-prog" style="margin-left:0.5rem; opacity:0.7;">0</span></div>
-      <div class="tab-pill ripple-element" onclick="setTrackTab('resolved', this)">Resolved <span id="cnt-res" style="margin-left:0.5rem; opacity:0.7;">0</span></div>
-    </div>
-    <div id="track-list-container" class="issue-grid"></div>
-    <div id="track-map-container" class="hidden"><div id="leaflet-map" style="height:500px; width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border);"></div></div>
-  </div>
-
-  <div id="view-map" class="view container">
-    <div style="margin-bottom: 2rem;">
-      <h2>🗺️ Interactive Issue Map</h2>
-      <p class="text-muted text-sm">Watch the live "Crew Tracker" for issues currently 'In Progress'.</p>
-    </div>
-    <div class="card" style="padding: 0; overflow: hidden;"><div id="dedicated-map" style="height:500px; width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border);"></div></div>
-  </div>
-
-  <div id="view-transparency" class="view container">
-    <div style="text-align: center; margin-bottom: 3rem;">
-      <h2>📊 Public Transparency Meter</h2>
-      <p class="text-muted mt-2">Holding municipal authorities accountable through open data.</p>
-    </div>
-    <div class="grid-4" style="margin-bottom: 2rem;">
-      <div class="card text-center"><p class="text-xs font-bold text-muted">Avg Resolution Time</p><h2 style="font-size:2.5rem; color:var(--primary);">4.2 Days</h2></div>
-      <div class="card text-center"><p class="text-xs font-bold text-muted">% Resolved On Time</p><h2 style="font-size:2.5rem; color:var(--success);">78%</h2></div>
-      <div class="card text-center"><p class="text-xs font-bold text-muted">Best Department</p><h2 style="font-size:1.5rem; color:var(--primary); margin-top:10px;">Electrical</h2></div>
-      <div class="card text-center" style="border-color:var(--danger); background:var(--danger-bg);"><p class="text-xs font-bold text-danger">Most Delayed Area</p><h2 style="font-size:1.5rem; color:var(--danger); margin-top:10px;">West Highway</h2></div>
-    </div>
-    <div class="card">
-      <h3 style="margin-bottom: 1rem;">Issues Pending Beyond SLA (Auto-Escalated)</h3>
-      <div id="transparency-list" class="dept-perf-list"></div>
-    </div>
-  </div>
-
-  <div id="view-ngo" class="view container">
-    <div style="margin-bottom: 2rem; text-align: center;">
-      <h2 style="color: var(--purple);">🤝 NGO & Community Partner Hub</h2>
-      <p class="text-muted text-sm">Review municipal budget shortages and pledge funds or volunteers directly to pending civic issues.</p>
-    </div>
-    <div class="grid-3" style="margin-bottom: 2rem;">
-      <div class="card" style="border-color: var(--purple); background: var(--purple-bg); text-align: center;"><h3 style="color: var(--purple); font-size: 2.5rem;">12</h3><p class="text-sm font-semibold">Active NGOs Registered</p></div>
-      <div class="card" style="text-align: center;"><h3 style="color: var(--success); font-size: 2.5rem;">₹450K</h3><p class="text-sm font-semibold text-muted">Total Funds Pledged</p></div>
-      <div class="card" style="text-align: center;"><h3 style="color: var(--primary); font-size: 2.5rem;">340</h3><p class="text-sm font-semibold text-muted">Volunteer Hours Logged</p></div>
-    </div>
-    <div class="card">
-      <div class="card-header"><span class="card-title">Issues Awaiting Community Adoption</span><span class="badge badge-outline">Budget Constrained Issues Only</span></div>
-      <div class="issue-grid" id="ngo-issue-list"></div>
-    </div>
-  </div>
-
-  <div id="view-budget" class="view container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-      <div><h2>💰 Municipal Budget Management</h2><p class="text-muted text-sm">Review delayed issues and approve funds to move them to 'In Progress'.</p></div>
-      <button class="btn btn-outline ripple-element" style="border-radius: 50px;" onclick="navigate('admin')">⬅️ Back to Admin</button>
-    </div>
-    <div class="grid-3" style="margin-bottom: 2rem;">
-      <div class="card"><p class="text-xs text-muted">Total Annual Budget</p><h2 style="font-size:2rem;">₹1.5M</h2></div>
-      <div class="card"><p class="text-xs text-muted">Allocated Funds</p><h2 style="font-size:2rem; color:var(--success);">₹1.1M</h2></div>
-      <div class="card"><p class="text-xs text-muted">Available Reserve</p><h2 style="font-size:2rem; color:var(--primary);">₹400K</h2></div>
-    </div>
-    <div class="card">
-      <div class="card-header"><span class="card-title">Pending Budget Approvals</span></div>
-      <div style="overflow-x: auto;">
-        <table>
-          <thead><tr><th>ID</th><th>Issue Details</th><th>Department</th><th>Est. Cost</th><th>Action</th></tr></thead>
-          <tbody id="budget-approval-table"></tbody>
+      <div class="card" style="max-width: 800px; margin: 0 auto; overflow: hidden; padding: 0;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+          <thead style="background: var(--bg-app);">
+            <tr>
+              <th style="padding: 1.5rem; color: var(--text-secondary);">Rank</th>
+              <th style="padding: 1.5rem; color: var(--text-secondary);">Citizen / NGO</th>
+              <th style="padding: 1.5rem; color: var(--text-secondary);">Issues Fixed</th>
+              <th style="padding: 1.5rem; color: var(--text-secondary);">Civic Points</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 1.5rem; font-size: 1.5rem;">🥇</td>
+              <td style="padding: 1.5rem; font-weight: bold;">Green Earth Org</td>
+              <td style="padding: 1.5rem;">42</td>
+              <td style="padding: 1.5rem; color: var(--warning); font-weight: bold;">4,200</td>
+            </tr>
+            <tr>
+              <td style="padding: 1.5rem; font-size: 1.5rem;">🥈</td>
+              <td style="padding: 1.5rem; font-weight: bold;">Sarah Jenkins</td>
+              <td style="padding: 1.5rem;">28</td>
+              <td style="padding: 1.5rem; color: var(--warning); font-weight: bold;">2,850</td>
+            </tr>
+            <tr>
+              <td style="padding: 1.5rem; font-size: 1.5rem;">🥉</td>
+              <td style="padding: 1.5rem; font-weight: bold;">Marcus T.</td>
+              <td style="padding: 1.5rem;">19</td>
+              <td style="padding: 1.5rem; color: var(--warning); font-weight: bold;">1,900</td>
+            </tr>
+            <tr style="background: var(--primary-light);">
+              <td style="padding: 1.5rem; font-weight: bold; color: var(--primary);">4</td>
+              <td style="padding: 1.5rem; font-weight: bold; color: var(--primary);" id="lb-current-user">You</td>
+              <td style="padding: 1.5rem; color: var(--primary);" id="lb-current-issues">0</td>
+              <td style="padding: 1.5rem; color: var(--primary); font-weight: bold;" id="lb-current-points">0</td>
+            </tr>
+          </tbody>
         </table>
       </div>
     </div>
-  </div>
 
-  <div id="view-admin" class="view container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-      <div><h2>🛡️ Authority Dashboard</h2><p class="text-muted text-sm">Manage issues, track department performance, and generate escalation reports.</p></div>
-      <div style="display: flex; gap: 1rem;">
-        <button class="btn btn-outline ripple-element" style="border-radius: 50px;" onclick="navigate('budget')">Manage Budgets</button>
-        <button class="btn btn-blue ripple-element" style="border-radius: 50px;" onclick="navigate('analytics')">📊 Analytics</button>
+    <div id="view-points" class="view container">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <h2>⭐ Community & Rewards</h2>
+        <p class="text-muted text-sm">Earn points for bettering your city and redeem them for rewards.</p>
+      </div>
+      <div class="grid-2">
+        <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
+          <h3 class="text-muted">Your Civic Points</h3>
+          <h1 style="font-size: 5rem; color: var(--warning); margin: 1rem 0;"><span id="manage-pts">0</span></h1>
+          <button class="btn btn-blue ripple-element" style="border-radius:50px; padding:0.75rem 2rem; align-self: center;" onclick="navigate('ngo')">View Volunteer Opportunities</button>
+          
+          <div style="text-align: left; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+            <h4 style="margin-bottom: 1rem;">Redeem Rewards</h4>
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); padding:1rem; border-radius:var(--radius-md); margin-bottom:1rem; cursor: pointer;">
+              <div>
+                <strong>1 Day Free Metro Pass</strong>
+                <div class="text-xs text-muted">Valid across all lines</div>
+              </div>
+              <button class="btn btn-outline ripple-element" style="border-radius: 50px;" onclick="redeemReward(50, 'Metro Pass')">50 pts</button>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); padding:1rem; border-radius:var(--radius-md); margin-bottom:1rem; cursor: pointer;">
+              <div>
+                <strong>Public Library Premium Access</strong>
+                <div class="text-xs text-muted">Skip the queues</div>
+              </div>
+              <button class="btn btn-outline ripple-element" style="border-radius: 50px;" onclick="redeemReward(100, 'Library Pass')">100 pts</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card" style="max-height: 550px; overflow-y: auto;">
+          <h3 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Points History Logs</h3>
+          <div id="points-history-list" style="display: flex; flex-direction: column; gap: 0.8rem; font-size: 0.85rem;">
+            </div>
+        </div>
       </div>
     </div>
-    <div class="card" style="background: linear-gradient(135deg, var(--bg-surface), var(--primary-light)); border-color: var(--primary); margin-bottom: 2rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+
+    <div id="view-profile" class="view container">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem;">
+        <h2>👤 My Profile</h2>
+        <button class="btn btn-outline ripple-element" onclick="navigate('settings')" style="border-radius:50px;">✏️ Edit Details</button>
+      </div>
+      <div class="grid-2">
+        <div class="card profile-card-anim" style="text-align: center; padding: 3rem 1.5rem;">
+          <div id="prof-avatar" style="width: 100px; height: 100px; background: linear-gradient(135deg, var(--primary), var(--purple)); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; margin: 0 auto 1.5rem; box-shadow: var(--shadow-md);">U</div>
+          <h2 id="prof-name" style="margin-bottom: 0.5rem;">User Name</h2>
+          <p id="prof-email" class="text-muted" style="margin-bottom: 1.5rem;">user@email.com</p>
+          <p id="prof-phone" style="font-weight: 600; margin-top: 10px; color: var(--primary);"></p>
+          <p id="prof-bio" class="text-sm text-muted" style="margin-top: 10px; font-style: italic;"></p>
+          <div class="badge badge-in-progress" id="prof-role-badge" style="margin-top: 15px;">Citizen</div>
+          <button class="btn btn-primary ripple-element mt-4" style="width:100%; border-radius:8px; margin-top:1.5rem;" onclick="navigate('settings')">Manage Database Settings</button>
+        </div>
+        
+        <div class="card profile-card-anim">
+          <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Civic Impact & Badges</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1rem; background: var(--bg-app); border-radius: var(--radius-md);">
+            <span class="text-muted font-medium">Total Points Earned</span>
+            <strong id="prof-pts" style="color: var(--warning); font-size: 1.5rem;">0</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-md);">
+            <span class="text-muted font-medium">Issues Reported</span>
+            <strong id="prof-reported" style="font-size: 1.5rem;">0</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1rem; background: var(--purple-bg); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: var(--radius-md);">
+            <span class="text-purple font-medium">Volunteered Projects</span>
+            <strong id="prof-vol" style="color: var(--purple); font-size: 1.5rem;">0</strong>
+          </div>
+          
+          <div id="badge-container" class="hidden" style="text-align:center; padding: 1.5rem; background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 2px solid #f59e0b; border-radius: var(--radius-lg); margin-top: 1.5rem;">
+            <div style="font-size: 3rem; margin-bottom:0.5rem;">🏆</div>
+            <h4 style="color:#b45309;">Neighborhood Hero</h4>
+            <p class="text-xs text-muted" style="margin-bottom:1rem;">Unlocked at 500 Civic Points</p>
+            <button class="btn ripple-element" style="background:#0a66c2; color:white; font-size:0.75rem; border-radius:50px;">Share to LinkedIn</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-settings" class="view container">
+      <div style="margin-bottom: 2rem;">
+        <h2>⚙️ Account & Database Sync</h2>
+      </div>
+      <div class="card" style="max-width: 700px; margin:0 auto;">
+        <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Profile Information (Synced to Cloud)</h3>
+        <p class="text-xs text-muted" style="margin-bottom: 1rem;">Information here will be pushed directly to your Supabase User Table.</p>
+        
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="text" id="set-phone" class="form-control" placeholder="+91 99999 99999">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Bio / Organization Details</label>
+          <textarea id="set-bio" class="form-control" placeholder="Tell us about yourself..."></textarea>
+        </div>
+
+        <h3 style="margin-bottom: 1.5rem; margin-top:2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Smart Notification System</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <div>
+            <strong>📧 Email Alerts</strong>
+            <p class="text-xs text-muted">Receive updates via EmailJS.</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="set-email-alert" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <button class="btn btn-blue ripple-element" style="width: 100%; border-radius: 50px; margin-top: 1rem;" onclick="saveSettingsToDB()">Save & Push to Database ☁️</button>
+      </div>
+    </div>
+
+    <div id="view-report" class="view container">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: var(--primary); text-transform: uppercase; letter-spacing: 2px;">📝 Intelligent Issue Uplink</h2>
+        <p class="text-muted text-sm mt-2">Powered by AI Categorization & Satellite Geo-Tracking</p>
+      </div>
+      
+      <div class="report-stepper">
+        <div class="step active" id="step-1-ind">1. Geo-Location</div>
+        <div class="step" id="step-2-ind">2. Details</div>
+        <div class="step" id="step-3-ind">3. Media</div>
+      </div>
+      
+      <div class="card tech-card" style="max-width: 800px; margin: 0 auto; overflow:hidden; position:relative; min-height: 450px;">
+        <form onsubmit="submitReport(event)" id="interactive-report-form">
+          
+          <div class="form-step" id="form-step-1">
+             <div class="form-group">
+                <label class="form-label" style="color: var(--primary);">📍 GPS Coordinates</label>
+                <div style="display: flex; gap: 1rem;">
+                  <input type="text" id="repLoc" class="form-control tech-input" placeholder="Awaiting GPS Lock..." readonly required>
+                  <button type="button" class="btn btn-blue ripple-element" id="btn-gps" onclick="getLocationWithAnim()">📡 Scan Satellites</button>
+                </div>
+             </div>
+             <button type="button" class="btn btn-outline" style="width:100%; border-color: var(--primary); color: var(--primary);" onclick="nextReportStep(2)">Proceed to Details ➔</button>
+          </div>
+
+          <div class="form-step hidden" id="form-step-2" style="transform: translateX(100%);">
+             <div class="form-group">
+               <label class="form-label">Issue Designation</label>
+               <input type="text" id="repTitle" class="form-control tech-input" placeholder="e.g. Subterranean Pipe Burst">
+             </div>
+             
+             <div class="form-group" style="position:relative;">
+               <label class="form-label">AI Analyzed Description (Voice Enabled)</label>
+               <textarea id="repDesc" class="form-control tech-input" oninput="triggerAICategorization()"></textarea>
+               <button type="button" class="mic-btn ripple-element" id="btnMic" onclick="startDictation()">🎤</button>
+             </div>
+             
+             <div class="form-group" style="position: relative;">
+               <label class="form-label">System Category Lock</label>
+               <select id="repCat" class="form-control tech-input">
+                 <option value="Pothole">Pothole / Roadway</option>
+                 <option value="Water Leak">Water Systems</option>
+                 <option value="Electrical">Electrical Grid</option>
+                 <option value="Garbage">Sanitation</option>
+                 <option value="Drainage">Drainage</option>
+                 <option value="Traffic">Traffic</option>
+               </select>
+               <span id="aiTag" class="ai-tag">✨ AI Locked</span>
+             </div>
+             
+             <div style="display:flex; gap:1rem;">
+               <button type="button" class="btn btn-outline" style="flex:1;" onclick="nextReportStep(1)">⬅ Back</button>
+               <button type="button" class="btn btn-outline" style="flex:1; border-color: var(--primary); color: var(--primary);" onclick="nextReportStep(3)">Attach Evidence ➔</button>
+             </div>
+          </div>
+
+          <div class="form-step hidden" id="form-step-3" style="transform: translateX(100%);">
+             <div class="form-group">
+              <label class="form-label">Visual Evidence Upload</label>
+              <div class="file-upload-box tech-upload" onclick="document.getElementById('repFile').click()">
+                <input type="file" id="repFile" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+                <div class="animated-icon scanner-line" style="font-size: 3rem; margin-bottom: 10px;">📸</div>
+                <p class="font-medium">Click to initialize image uplink</p>
+                <p id="uploadStatus" class="text-success text-sm font-bold mt-2"></p>
+              </div>
+            </div>
+            <div style="display:flex; gap:1rem;">
+               <button type="button" class="btn btn-outline" style="flex:1;" onclick="nextReportStep(2)">⬅ Back</button>
+               <button type="submit" class="btn btn-success ripple-element" style="flex:2; box-shadow: 0 0 15px var(--success);">🚀 Execute Final Upload</button>
+             </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="view-track" class="view container">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem;">
         <div>
-          <h3 style="color: var(--primary); margin-bottom: 0.5rem;">📄 Policy & Budget Escalation Reports</h3>
-          <p class="text-sm text-muted">Generate data-driven PDFs highlighting high-frequency issues and budget shortages.</p>
+          <h2>📋 Track Issues & Advisories</h2>
+          <p class="text-muted text-sm" style="margin-top: 0.25rem;">Monitor issue status, budget approvals, and temporary actions.</p>
         </div>
-        <button class="btn btn-primary ripple-element" style="border-radius: 8px; padding: 0.8rem 1.5rem;" onclick="generatePDFReport()">Download Needs Report (.PDF)</button>
+        <div style="display: flex; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.25rem; box-shadow: var(--shadow-sm);">
+          <button class="btn" id="btn-list-view" style="background: var(--bg-app); color: var(--primary); font-weight:600;" onclick="switchTrackView('list')">Grid View</button>
+          <button class="btn" id="btn-map-view" style="background: transparent; color: var(--text-secondary);" onclick="switchTrackView('map')">Map View</button>
+        </div>
+      </div>
+      
+      <div class="filter-bar">
+        <div style="flex: 1; display: flex; align-items: center; background: var(--bg-app); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0 1rem;">
+          <span>🔍</span>
+          <input type="text" id="trackSearch" placeholder="Search issues..." style="border:none; background:transparent; width:100%; padding:0.875rem; outline:none; color:var(--text-primary);" oninput="renderTrack()">
+        </div>
+        <select id="trackCatFilter" class="form-control" style="width: 200px;" onchange="renderTrack()">
+          <option value="">All Categories</option>
+          <option value="Pothole">Pothole</option>
+          <option value="Water Leak">Water Leak</option>
+          <option value="Electrical">Electrical</option>
+          <option value="Garbage">Garbage</option>
+          <option value="Drainage">Drainage</option>
+          <option value="Traffic">Traffic</option>
+        </select>
+      </div>
+
+      <div class="tabs-pill" style="margin-bottom: 1.5rem; display: inline-flex;">
+        <div class="tab-pill active ripple-element" onclick="setTrackTab('All', this)">All <span id="cnt-all" style="margin-left:0.5rem; opacity:0.7;">0</span></div>
+        <div class="tab-pill ripple-element" onclick="setTrackTab('pending', this)">Pending <span id="cnt-pen" style="margin-left:0.5rem; opacity:0.7;">0</span></div>
+        <div class="tab-pill ripple-element" onclick="setTrackTab('in progress', this)">In Progress <span id="cnt-prog" style="margin-left:0.5rem; opacity:0.7;">0</span></div>
+        <div class="tab-pill ripple-element" onclick="setTrackTab('resolved', this)">Resolved <span id="cnt-res" style="margin-left:0.5rem; opacity:0.7;">0</span></div>
+      </div>
+
+      <div id="track-list-container" class="issue-grid"></div>
+      <div id="track-map-container" class="hidden">
+        <div id="leaflet-map" style="height:500px; width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border);"></div>
       </div>
     </div>
 
-    <div class="admin-top-stats" id="admin-stats-top"></div>
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-header"><span class="card-title">High Priority / Budget Delayed</span><span class="badge badge-high" id="hp-count-badge">0 Active</span></div>
-        <div id="admin-hp-list" class="hp-issue-list"></div>
+    <div id="view-map" class="view container">
+      <div style="margin-bottom: 2rem;">
+        <h2>🗺️ Interactive Issue Map</h2>
+        <p class="text-muted text-sm">Watch the live "Crew Tracker" for issues currently 'In Progress'.</p>
       </div>
-      <div class="card">
-        <div class="card-header"><span class="card-title">Department Budget Usage</span></div>
-        <div id="admin-dept-progress" class="dept-perf-list"></div>
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <div id="dedicated-map" style="height:500px; width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border);"></div>
       </div>
     </div>
-    <div class="card" style="margin-top: 1.5rem;">
-      <div class="card-header"><span class="card-title">Recent Issues Log</span><button class="btn btn-outline text-xs ripple-element" style="border-radius: 50px;" onclick="navigate('track')">View All ↗</button></div>
-      <div style="overflow-x: auto;">
-        <table>
-          <thead><tr><th>ID</th><th>Title</th><th>Budget Status</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody id="admin-table-body"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 
-  <div id="view-analytics" class="view container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-      <div><h2>📈 Analytics Dashboard</h2><p class="text-muted text-sm">Data visualizations for policy review and resource allocation.</p></div>
-      <button class="btn btn-outline ripple-element" style="border-radius: 50px;" onclick="navigate('admin')">⬅️ Back to Admin</button>
-    </div>
-    <div class="grid-4" style="margin-bottom: 2rem;">
-      <div class="card"><div style="display:flex; gap:1rem; align-items:center;"><div class="icon-circle" style="background:var(--primary-light); color:var(--primary);">📈</div><div><p class="text-xs text-muted">Resolution Rate</p><h3 id="an-rate" style="font-size:1.5rem;">0%</h3></div></div></div>
-      <div class="card"><div style="display:flex; gap:1rem; align-items:center;"><div class="icon-circle" style="background:rgba(168,85,247,0.15); color:#a855f7;">⏱️</div><div><p class="text-xs text-muted">Avg Response Time</p><h3 style="font-size:1.5rem;">4.2h</h3></div></div></div>
-      <div class="card"><div style="display:flex; gap:1rem; align-items:center;"><div class="icon-circle" style="background:var(--warning-bg); color:var(--warning);">📍</div><div><p class="text-xs text-muted">Active Hotspots</p><h3 style="font-size:1.5rem;">5</h3></div></div></div>
-      <div class="card"><div style="display:flex; gap:1rem; align-items:center;"><div class="icon-circle" style="background:var(--danger-bg); color:var(--danger);">⚠️</div><div><p class="text-xs text-muted">High Priority</p><h3 id="an-hp" style="font-size:1.5rem;">0</h3></div></div></div>
-    </div>
-    
-    <div class="grid-2">
-      <div class="card"><div class="card-header"><span class="card-title">Status Distribution</span></div><div class="chart-container"><canvas id="chart-status"></canvas></div></div>
-      <div class="card"><div class="card-header"><span class="card-title">Priority Distribution</span></div><div class="chart-container"><canvas id="chart-priority"></canvas></div></div>
-    </div>
-    
-    <div class="grid-2" style="margin-top: 1.5rem;">
-      <div class="card"><div class="card-header"><span class="card-title">Issues by Category</span></div><div class="chart-container"><canvas id="chart-categories"></canvas></div></div>
-      <div class="card"><div class="card-header"><span class="card-title">Resolution Trend (Last 7 Days)</span></div><div class="chart-container"><canvas id="chart-trend"></canvas></div></div>
-    </div>
-  </div>
-
-  <div id="view-integrations" class="view container">
-    <div style="text-align: center; margin-bottom: 3rem;">
-      <h2>🔌 Platform Integrations & Automations</h2>
-      <p class="text-muted mt-2">Connect third-party tools and configure smart workflows for the CiviSync platform.</p>
-    </div>
-    <div class="grid-2">
-      <div class="card">
-        <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">API & CRM Integrations</h3>
-        <div class="integration-item">
-          <div><strong style="display:flex; align-items:center; gap:0.5rem;">📧 Mailchimp</strong><p class="text-xs text-muted">Sync citizen emails for newsletter updates.</p></div>
-          <button class="btn btn-outline text-xs" style="border-radius: 50px;">Connect</button>
-        </div>
-        <div class="integration-item">
-          <div><strong style="display:flex; align-items:center; gap:0.5rem;">☁️ Salesforce / HubSpot</strong><p class="text-xs text-muted">Push NGO & Partner leads to CRM.</p></div>
-          <button class="btn btn-outline text-xs" style="border-radius: 50px;">Connect</button>
-        </div>
-        <div class="integration-item">
-          <div><strong style="display:flex; align-items:center; gap:0.5rem;">📅 Google / Outlook Calendar</strong><p class="text-xs text-muted">Sync repair schedules and volunteer drives.</p></div>
-          <span class="badge badge-low">Connected</span>
-        </div>
-        <div class="integration-item">
-          <div><strong style="display:flex; align-items:center; gap:0.5rem;">📈 Google Analytics 4 (GA4)</strong><p class="text-xs text-muted">Track platform traffic and user demographics.</p></div>
-          <span class="badge badge-low">Connected</span>
-        </div>
+    <div id="view-transparency" class="view container">
+      <div style="text-align: center; margin-bottom: 3rem;">
+        <h2>📊 Public Transparency Meter</h2>
+        <p class="text-muted mt-2">Holding municipal authorities accountable through open data.</p>
+      </div>
+      <div class="grid-4" style="margin-bottom: 2rem;">
+        <div class="card text-center"><p class="text-xs font-bold text-muted">Avg Resolution Time</p><h2 style="font-size:2.5rem; color:var(--primary);">4.2 Days</h2></div>
+        <div class="card text-center"><p class="text-xs font-bold text-muted">% Resolved On Time</p><h2 style="font-size:2.5rem; color:var(--success);">78%</h2></div>
+        <div class="card text-center"><p class="text-xs font-bold text-muted">Best Department</p><h2 style="font-size:1.5rem; color:var(--primary); margin-top:10px;">Electrical</h2></div>
+        <div class="card text-center" style="border-color:var(--danger); background:var(--danger-bg);"><p class="text-xs font-bold text-danger">Most Delayed Area</p><h2 style="font-size:1.5rem; color:var(--danger); margin-top:10px;">West Highway</h2></div>
       </div>
       <div class="card">
-        <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Automation & Smart Workflows</h3>
-        <div class="integration-item">
-          <div><strong>Auto-Welcome Emails</strong><p class="text-xs text-muted">Send onboarding guides to new members.</p></div>
-          <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
-        </div>
-        <div class="integration-item">
-          <div><strong>Automated Confirmations</strong><p class="text-xs text-muted">Send instant receipts for Event/NGO registrations.</p></div>
-          <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
-        </div>
-        <div class="integration-item">
-          <div><strong>Workflow for Content Approval</strong><p class="text-xs text-muted">Require Admin review before public map posting.</p></div>
-          <label class="toggle-switch"><input type="checkbox"><span class="slider"></span></label>
-        </div>
-        <div class="integration-item">
-          <div><strong>Escalation Triggers</strong><p class="text-xs text-muted">Auto-route to Govt Dashboard if pending > 30 days.</p></div>
-          <label class="toggle-switch"><input type="checkbox" checked disabled><span class="slider" style="background:#ef4444;"></span></label>
-        </div>
+        <h3 style="margin-bottom: 1rem;">Issues Pending Beyond SLA (Auto-Escalated)</h3>
+        <div id="transparency-list" class="dept-perf-list"></div>
       </div>
     </div>
-  </div>
 
-  <div id="view-gov" class="view gov-theme-wrapper">
-    <div class="container" style="padding-top: 3rem; padding-bottom: 3rem;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; border-bottom: 2px solid #ea580c; padding-bottom: 1rem;">
-        <div>
-          <h2 style="color: white; font-size: 2.25rem;">🏛️ Government Accountability Portal</h2>
-          <p style="color: #94a3b8; margin-top: 0.5rem;">Review auto-escalated issues based on delay duration and citizen pressure.</p>
-        </div>
-        <div class="badge" style="background:#ea580c; color:white; font-size: 1rem; padding: 0.5rem 1rem;" id="gov-logged-role">State Official</div>
+    <div id="view-ngo" class="view container">
+      <div style="margin-bottom: 2rem; text-align: center;">
+        <h2 style="color: var(--purple);">🤝 NGO & Community Partner Hub</h2>
+        <p class="text-muted text-sm">Review municipal budget shortages and pledge funds or volunteers directly to pending civic issues.</p>
       </div>
       <div class="grid-3" style="margin-bottom: 2rem;">
-        <div class="card" style="background: rgba(255,255,255,0.05); border-color:#334155;"><p class="text-xs font-bold" style="color:#94a3b8;">Level 1 Escalations (>3 Days)</p><h2 id="gov-l1" style="font-size:2.5rem; color:#facc15;">0</h2></div>
-        <div class="card" style="background: rgba(255,255,255,0.05); border-color:#334155;"><p class="text-xs font-bold" style="color:#94a3b8;">Level 2 Escalations (>7 Days)</p><h2 id="gov-l2" style="font-size:2.5rem; color:#f97316;">0</h2></div>
-        <div class="card" style="background: rgba(239,68,68,0.1); border-color:#ef4444;"><p class="text-xs font-bold" style="color:#fca5a5;">Level 3 Escalations (>15 Days)</p><h2 id="gov-l3" style="font-size:2.5rem; color:#ef4444;">0</h2></div>
+        <div class="card" style="border-color: var(--purple); background: var(--purple-bg); text-align: center;">
+          <h3 style="color: var(--purple); font-size: 2.5rem;">12</h3>
+          <p class="text-sm font-semibold">Active NGOs Registered</p>
+        </div>
+        <div class="card" style="text-align: center;">
+          <h3 style="color: var(--success); font-size: 2.5rem;">₹450K</h3>
+          <p class="text-sm font-semibold text-muted">Total Funds Pledged</p>
+        </div>
+        <div class="card" style="text-align: center;">
+          <h3 style="color: var(--primary); font-size: 2.5rem;">340</h3>
+          <p class="text-sm font-semibold text-muted">Volunteer Hours Logged</p>
+        </div>
       </div>
-      <div id="gov-issue-list" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Issues Awaiting Community Adoption</span>
+          <span class="badge badge-outline">Budget Constrained Issues Only</span>
+        </div>
+        <div class="issue-grid" id="ngo-issue-list"></div>
+      </div>
     </div>
-  </div>
 
-  <div id="view-superadmin" class="view container">
-    <div style="margin-bottom: 2rem; border-bottom: 2px solid #10b981; padding-bottom: 1rem;">
-      <h2 style="color: #10b981;">👁️ Platform Audit & User Management</h2>
-      <p class="text-muted">Live tracking of every action taken by every user on the CiviSync platform.</p>
-    </div>
-    <div class="grid-2">
-      <div class="card" style="max-height: 600px; overflow-y: auto;">
-        <h3 style="margin-bottom: 1rem;">Registered Users Database</h3>
-        <table style="width: 100%; font-size: 0.8rem;">
-          <thead style="background: var(--bg-app);">
-            <tr><th style="padding:10px;">Name</th><th style="padding:10px;">Email</th><th style="padding:10px;">Role</th><th style="padding:10px;">Points</th></tr>
-          </thead>
-          <tbody id="sa-users-table"></tbody>
-        </table>
+    <div id="view-budget" class="view container">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+          <h2>💰 Municipal Budget Management</h2>
+          <p class="text-muted text-sm">Review delayed issues and approve funds to move them to 'In Progress'.</p>
+        </div>
+        <button class="btn btn-outline ripple-element" style="border-radius: 50px;" onclick="navigate('admin')">⬅️ Back to Admin</button>
       </div>
-      <div class="card" style="max-height: 600px; overflow-y: auto; background: #0f172a; color: white;">
-        <h3 style="margin-bottom: 1rem; color: #10b981;">Live Audit Trail</h3>
-        <div id="sa-audit-logs" style="display: flex; flex-direction: column; gap: 0.8rem;"></div>
+      <div class="grid-3" style="margin-bottom: 2rem;">
+        <div class="card"><p class="text-xs text-muted">Total Annual Budget</p><h2 style="font-size:2rem;">₹1.5M</h2></div>
+        <div class="card"><p class="text-xs text-muted">Allocated Funds</p><h2 style="font-size:2rem; color:var(--success);">₹1.1M</h2></div>
+        <div class="card"><p class="text-xs text-muted">Available Reserve</p><h2 style="font-size:2rem; color:var(--primary);">₹400K</h2></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Pending Budget Approvals</span></div>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead><tr><th>ID</th><th>Issue Details</th><th>Department</th><th>Est. Cost</th><th>Action</th></tr></thead>
+            <tbody id="budget-approval-table"></tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
 
-</main>
-
-<div class="modal-overlay" id="modal">
-  <div class="modal">
-    <div class="modal-header">
-      <div>
-        <h3 id="mod-title">Issue Title</h3>
-        <p class="text-xs text-muted" style="margin-top:0.25rem;">ID: <span id="mod-id" class="table-id"></span> | Reported: <span id="mod-time"></span></p>
-        <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;"><span class="badge badge-outline" id="mod-cat"></span><span id="mod-prio"></span><span id="mod-stat"></span></div>
+    <div id="view-admin" class="view container">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+          <h2>🛡️ Authority Dashboard</h2>
+          <p class="text-muted text-sm">Manage issues, track department performance, and generate escalation reports.</p>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button class="btn btn-outline ripple-element" style="border-radius: 50px;" onclick="navigate('budget')">Manage Budgets</button>
+          <button class="btn btn-blue ripple-element" style="border-radius: 50px;" onclick="navigate('analytics')">📊 Analytics</button>
+        </div>
       </div>
-      <button class="btn btn-outline" style="border:none; padding:0.5rem;" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="mod-temp-sec"></div>
-      <img id="mod-img" src="" style="width:100%; height:200px; object-fit:cover; border-radius:var(--radius-md); margin-bottom:1rem; border:1px solid var(--border);">
+      <div class="card" style="background: linear-gradient(135deg, var(--bg-surface), var(--primary-light)); border-color: var(--primary); margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="color: var(--primary); margin-bottom: 0.5rem;">📄 Policy & Budget Escalation Reports</h3>
+            <p class="text-sm text-muted">Generate data-driven PDFs highlighting high-frequency issues and budget shortages.</p>
+          </div>
+          <button class="btn btn-primary ripple-element" style="border-radius: 8px; padding: 0.8rem 1.5rem;" onclick="generatePDFReport()">Download Needs Report (.PDF)</button>
+        </div>
+      </div>
+
+      <div class="admin-top-stats" id="admin-stats-top"></div>
       
-      <div class="timeline-container" style="background:var(--bg-app); border:1px solid var(--border); border-radius:var(--radius-md); padding: 1.5rem; margin-bottom: 1.5rem;">
-        <h4 style="font-size:0.875rem; margin-bottom:1rem; color:var(--primary);">📡 Live Tracking Timeline</h4>
-        <div id="mod-timeline" class="timeline"></div>
-      </div>
-
-      <div class="budget-box">
-        <h4 style="font-size:0.875rem; margin-bottom:0.5rem; color:var(--text-primary);">💰 Financial & Schedule Status</h4>
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span id="mod-budget-badge"></span><span id="mod-schedule" class="text-sm font-medium text-muted"></span>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">High Priority / Budget Delayed</span>
+            <span class="badge badge-high" id="hp-count-badge">0 Active</span>
+          </div>
+          <div id="admin-hp-list" class="hp-issue-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Department Budget Usage</span></div>
+          <div id="admin-dept-progress" class="dept-perf-list"></div>
         </div>
       </div>
-
-      <p class="text-sm font-semibold" style="margin-bottom:0.25rem;">Description</p>
-      <p id="mod-desc" class="text-sm text-muted" style="margin-bottom:1rem; line-height:1.6;"></p>
-
-      <div class="volunteer-box">
-        <div><h4 style="font-size:0.875rem; color:var(--purple); margin-bottom:0.25rem;">🤝 Community Action Needed</h4><p class="text-xs text-muted">Government funds are constrained. <span id="mod-vol-count">0</span> citizens have volunteered to help fix this.</p></div>
-        <button class="btn ripple-element" style="background:var(--purple); color:white; border-radius:50px; font-size:0.8rem;" onclick="openNGOForm(activeModalIssueId)">Volunteer / Adopt</button>
-      </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:1rem; margin-top:1rem;">
-        <p class="text-xs text-muted">Auto-Assigned to: <strong id="mod-dept" style="color:var(--text-primary);"></strong></p>
-        <button class="btn btn-blue text-xs ripple-element" style="border-radius: 50px;" onclick="upvoteIssue()" id="mod-upvote">⬆ Upvote (<span id="mod-upv-cnt"></span>)</button>
-      </div>
-
-      <div id="cit-action-area" class="hidden" style="margin-top:1rem; display:flex; gap:0.5rem;">
-        <button class="btn text-xs ripple-element hidden" id="btn-escalate" style="background:#ea580c; color:white; flex:1;" onclick="manualEscalate()">🚨 Escalate Issue</button>
-        <button class="btn text-xs ripple-element hidden" id="btn-rti" style="background:#0f172a; color:white; flex:1;" onclick="generateRTIDraft()">📄 File RTI Draft</button>
-      </div>
-
-      <div id="admin-update-area" class="hidden" style="margin-top:1.5rem; padding-top:1.5rem; border-top:1px solid var(--border);">
-        <h4 style="font-size:0.875rem; margin-bottom:1rem;">Authority Controls</h4>
-        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-          <select id="admin-sel-stat" class="form-control" style="flex:1;"><option value="pending">Pending</option><option value="in progress">In Progress</option><option value="resolved">Resolved</option></select>
-          <select id="admin-sel-budget" class="form-control" style="flex:1;"><option value="Funded">Funded</option><option value="Pending Budget Constraint">Pending Budget Constraint</option><option value="Scheduled for Next Cycle">Scheduled Next Cycle</option></select>
+      
+      <div class="card" style="margin-top: 1.5rem;">
+        <div class="card-header">
+          <span class="card-title">Recent Issues Log</span>
+          <button class="btn btn-outline text-xs ripple-element" style="border-radius: 50px;" onclick="navigate('track')">View All ↗</button>
         </div>
-        <button class="btn btn-blue ripple-element" style="border-radius: 50px; width:100%;" onclick="adminSaveStatus()">Save & Update Audit Trail</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="ngo-modal">
-  <div class="modal" style="max-width: 500px;">
-    <div class="modal-header">
-      <h3 style="color: var(--purple);">🤝 Pledge Support Form</h3>
-      <button class="btn btn-outline" style="border:none; padding:0.5rem;" onclick="closeNGOForm()">✕</button>
-    </div>
-    <div class="modal-body">
-      <form onsubmit="submitNGOForm(event)">
-        <div class="form-group"><label class="form-label">Organization / Individual Name</label><input type="text" class="form-control" id="ngo-name" required></div>
-        <div class="form-group"><label class="form-label">Contact Email</label><input type="email" class="form-control" id="ngo-email" required></div>
-        <div class="form-group"><label class="form-label">Resource Pledged</label>
-          <select class="form-control" id="ngo-resource">
-            <option>Volunteer Manpower</option>
-            <option>Financial Donation</option>
-            <option>Raw Materials / Equipment</option>
-          </select>
-        </div>
-        <div class="form-group"><label class="form-label">Message to Authority</label><textarea class="form-control" id="ngo-msg" required></textarea></div>
-        <button type="submit" class="btn ripple-element" style="width: 100%; padding: 1rem; border-radius: 50px; background:var(--purple); color:white;">Send Proposal via Email</button>
-      </form>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="forgot-modal">
-  <div class="modal" style="max-width: 450px;">
-    <div class="modal-header">
-      <h3 style="color: var(--primary);">Secure Password Reset</h3>
-      <button class="btn btn-outline" style="border:none; padding:0.5rem;" onclick="closeForgotModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <form id="forgot-step-1" onsubmit="requestPasswordReset(event)">
-        <p class="text-sm text-muted" style="margin-bottom:1rem;">Enter your registered email. We will send a 4-digit OTP to verify your identity.</p>
-        <div class="form-group"><input type="email" class="form-control" id="forgot-email" placeholder="citizen@city.com" required></div>
-        <button type="submit" class="btn btn-blue ripple-element" style="width:100%; border-radius:50px;">Send Reset OTP</button>
-      </form>
-      <form id="forgot-step-2" class="hidden" onsubmit="verifyResetOTP(event)">
-        <p class="text-sm text-success" style="margin-bottom:1rem; font-weight:bold;">✅ OTP Sent to your email!</p>
-        <div class="form-group"><label class="form-label">Enter 4-Digit OTP</label><input type="text" class="form-control" id="forgot-otp" placeholder="1234" required></div>
-        <div class="form-group" style="position:relative;"><label class="form-label">New Password</label><input type="password" class="form-control" id="forgot-new-pwd" required><span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('forgot-new-pwd')">👁️</span></div>
-        <button type="submit" class="btn btn-blue ripple-element" style="width:100%; border-radius:50px;">Reset Password & Login</button>
-      </form>
-    </div>
-  </div>
-</div>
-
-<div id="pdf-content" class="hidden" style="padding: 40px; background: white; color: black; width: 800px; font-family: 'Helvetica', sans-serif;">
-  <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-    <h1 style="color: #2563eb; margin: 0;">CiviSync Escalation Report</h1>
-    <p style="margin: 0; color: #64748b;"><strong>Generated:</strong> <span id="pdf-date"></span></p>
-  </div>
-  <h3 style="margin-top: 30px; color: #1e293b;">Executive Summary</h3>
-  <p style="line-height: 1.6; color: #334155;">This automated document highlights critical civic issues delayed due to verified municipal budget constraints.</p>
-  <h3 style="margin-top: 30px; color: #ef4444; border-left: 4px solid #ef4444; padding-left: 10px;">High Priority & Budget Delayed Issues</h3>
-  <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px;">
-    <thead>
-      <tr style="background: #f8fafc; text-align: left;">
-        <th style="padding: 12px; border: 1px solid #e2e8f0;">Issue ID</th>
-        <th style="padding: 12px; border: 1px solid #e2e8f0;">Issue Description</th>
-        <th style="padding: 12px; border: 1px solid #e2e8f0;">Assigned Department</th>
-        <th style="padding: 12px; border: 1px solid #e2e8f0;">Budget Status</th>
-      </tr>
-    </thead>
-    <tbody id="pdf-table-body"></tbody>
-  </table>
-</div>
-
-<div id="rti-pdf-content" class="hidden" style="padding: 40px; background: white; color: black; width: 800px; font-family: serif;">
-  <h2 style="text-align:center; text-decoration: underline;">RIGHT TO INFORMATION (RTI) ACT, 2005</h2>
-  <p><strong>Date:</strong> <span id="rti-date"></span></p>
-  <p><strong>Subject:</strong> Request for information regarding pending civic complaint ID: <span id="rti-id"></span></p>
-  <p>I filed a complaint on the CiviSync platform regarding <strong><span id="rti-title"></span></strong>. This issue has been pending for over 30 days without resolution.</p>
-</div>
-
-<div id="notice-pdf-content" class="hidden" style="padding: 40px; background: white; color: black; width: 800px; font-family: sans-serif; border: 5px solid #ea580c;">
-  <h1 style="color: #ea580c; text-align:center;">OFFICIAL SHOWCAUSE NOTICE</h1>
-  <p style="text-align:right;"><strong>Date:</strong> <span id="notice-date"></span></p>
-  <p><strong>To Department:</strong> <span id="notice-dept"></span></p>
-  <hr>
-  <h3 style="margin-top:20px;">Re: Severe Negligence on Issue ID: <span id="notice-id"></span></h3>
-  <p>This automated notice is to inform you that the issue titled <strong>"<span id="notice-title"></span>"</strong> has breached all municipal SLAs and is currently under <strong>Level 3 Escalation</strong>.</p>
-</div>
-
-<div class="chatbot-wrapper">
-  <button class="chat-toggle-btn ripple-element" onclick="toggleChat()">💬</button>
-  <div id="chat-window" class="chat-window hidden">
-    <div class="chat-header" style="background: linear-gradient(90deg, #1e3a8a, #3b82f6);">
-      <span style="display:flex; align-items:center; gap:10px;"><div style="width:10px; height:10px; background:#10b981; border-radius:50%; box-shadow: 0 0 8px #10b981;"></div>🤖 Local CiviBot</span>
-      <button onclick="toggleChat()" style="background:none; color:white; font-size:1.2rem; border:none; cursor:pointer;">✕</button>
-    </div>
-    <div class="chat-body" id="chat-body">
-      <div class="chat-msg msg-bot">
-        Hi! I am the local CiviBot. I can answer questions and instantly navigate the site for you! Try asking me to report an issue, view points, or track complaints.
-        <div class="chat-quick-replies" style="margin-top:10px; display:flex; gap:5px; flex-wrap:wrap;">
-          <button class="chat-chip" onclick="quickReply('I want to report an issue')">Report Issue</button>
-          <button class="chat-chip" onclick="quickReply('Take me to track complaints')">Track Delays</button>
-          <button class="chat-chip" onclick="quickReply('How do I volunteer?')">Volunteer</button>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead><tr><th>ID</th><th>Title</th><th>Budget Status</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="admin-table-body"></tbody>
+          </table>
         </div>
       </div>
     </div>
-    <div class="chat-input-area" style="background: var(--bg-surface);">
-      <input type="text" id="chat-msg" class="form-control" placeholder="Ask CiviBot to do something..." style="border-radius: 50px; padding: 0.75rem 1.25rem;" onkeypress="if(event.key==='Enter') sendLocalChat()">
-      <button class="btn btn-blue ripple-element" style="border-radius: 50%; width: 45px; height: 45px; padding: 0; display: flex; align-items: center; justify-content: center;" onclick="sendLocalChat()">➤</button>
+
+    <div id="view-analytics" class="view container">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+          <h2>📈 Analytics Dashboard</h2>
+          <p class="text-muted text-sm">Data visualizations for policy review and resource allocation.</p>
+        </div>
+        <button class="btn btn-outline ripple-element" style="border-radius: 50px;" onclick="navigate('admin')">⬅️ Back to Admin</button>
+      </div>
+      
+      <div class="grid-4" style="margin-bottom: 2rem;">
+        <div class="card">
+          <div style="display:flex; gap:1rem; align-items:center;">
+            <div class="icon-circle" style="background:var(--primary-light); color:var(--primary);">📈</div>
+            <div><p class="text-xs text-muted">Resolution Rate</p><h3 id="an-rate" style="font-size:1.5rem;">0%</h3></div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex; gap:1rem; align-items:center;">
+            <div class="icon-circle" style="background:rgba(168,85,247,0.15); color:#a855f7;">⏱️</div>
+            <div><p class="text-xs text-muted">Avg Response Time</p><h3 style="font-size:1.5rem;">4.2h</h3></div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex; gap:1rem; align-items:center;">
+            <div class="icon-circle" style="background:var(--warning-bg); color:var(--warning);">📍</div>
+            <div><p class="text-xs text-muted">Active Hotspots</p><h3 style="font-size:1.5rem;">5</h3></div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex; gap:1rem; align-items:center;">
+            <div class="icon-circle" style="background:var(--danger-bg); color:var(--danger);">⚠️</div>
+            <div><p class="text-xs text-muted">High Priority</p><h3 id="an-hp" style="font-size:1.5rem;">0</h3></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Status Distribution</span></div>
+          <div class="chart-container"><canvas id="chart-status"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Priority Distribution</span></div>
+          <div class="chart-container"><canvas id="chart-priority"></canvas></div>
+        </div>
+      </div>
+      
+      <div class="grid-2" style="margin-top: 1.5rem;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Issues by Category</span></div>
+          <div class="chart-container"><canvas id="chart-categories"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Resolution Trend (Last 7 Days)</span></div>
+          <div class="chart-container"><canvas id="chart-trend"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-integrations" class="view container">
+      <div style="text-align: center; margin-bottom: 3rem;">
+        <h2>🔌 Platform Integrations & Automations</h2>
+        <p class="text-muted mt-2">Connect third-party tools and configure smart workflows for the CiviSync platform.</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">API & CRM Integrations</h3>
+          
+          <div class="integration-item">
+            <div>
+              <strong style="display:flex; align-items:center; gap:0.5rem;">📧 Mailchimp</strong>
+              <p class="text-xs text-muted">Sync citizen emails for newsletter updates.</p>
+            </div>
+            <button class="btn btn-outline text-xs" style="border-radius: 50px;">Connect</button>
+          </div>
+          
+          <div class="integration-item">
+            <div>
+              <strong style="display:flex; align-items:center; gap:0.5rem;">☁️ Salesforce / HubSpot</strong>
+              <p class="text-xs text-muted">Push NGO & Partner leads to CRM.</p>
+            </div>
+            <button class="btn btn-outline text-xs" style="border-radius: 50px;">Connect</button>
+          </div>
+          
+          <div class="integration-item">
+            <div>
+              <strong style="display:flex; align-items:center; gap:0.5rem;">📅 Google / Outlook Calendar</strong>
+              <p class="text-xs text-muted">Sync repair schedules and volunteer drives.</p>
+            </div>
+            <span class="badge badge-low">Connected</span>
+          </div>
+        </div>
+        
+        <div class="card">
+          <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Automation & Smart Workflows</h3>
+          
+          <div class="integration-item">
+            <div>
+              <strong>Auto-Welcome Emails</strong>
+              <p class="text-xs text-muted">Send onboarding guides to new members.</p>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          
+          <div class="integration-item">
+            <div>
+              <strong>Automated Confirmations</strong>
+              <p class="text-xs text-muted">Send instant receipts for Event/NGO registrations.</p>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          
+          <div class="integration-item">
+            <div>
+              <strong>Escalation Triggers</strong>
+              <p class="text-xs text-muted">Auto-route to Govt Dashboard if pending > 30 days.</p>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" checked disabled><span class="slider" style="background:#ef4444;"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-gov" class="view gov-theme-wrapper">
+      <div class="container" style="padding-top: 3rem; padding-bottom: 3rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; border-bottom: 2px solid #ea580c; padding-bottom: 1rem;">
+          <div>
+            <h2 style="color: white; font-size: 2.25rem;">🏛️ Government Accountability Portal</h2>
+            <p style="color: #94a3b8; margin-top: 0.5rem;">Review auto-escalated issues based on delay duration and citizen pressure.</p>
+          </div>
+          <div class="badge" style="background:#ea580c; color:white; font-size: 1rem; padding: 0.5rem 1rem;" id="gov-logged-role">State Official</div>
+        </div>
+        
+        <div class="grid-3" style="margin-bottom: 2rem;">
+          <div class="card" style="background: rgba(255,255,255,0.05); border-color:#334155;">
+            <p class="text-xs font-bold" style="color:#94a3b8;">Level 1 Escalations (>3 Days)</p>
+            <h2 id="gov-l1" style="font-size:2.5rem; color:#facc15;">0</h2>
+          </div>
+          <div class="card" style="background: rgba(255,255,255,0.05); border-color:#334155;">
+            <p class="text-xs font-bold" style="color:#94a3b8;">Level 2 Escalations (>7 Days)</p>
+            <h2 id="gov-l2" style="font-size:2.5rem; color:#f97316;">0</h2>
+          </div>
+          <div class="card" style="background: rgba(239,68,68,0.1); border-color:#ef4444;">
+            <p class="text-xs font-bold" style="color:#fca5a5;">Level 3 Escalations (>15 Days)</p>
+            <h2 id="gov-l3" style="font-size:2.5rem; color:#ef4444;">0</h2>
+          </div>
+        </div>
+        
+        <div id="gov-issue-list" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+      </div>
+    </div>
+
+    <div id="view-superadmin" class="view container">
+      <div style="margin-bottom: 2rem; border-bottom: 2px solid #10b981; padding-bottom: 1rem;">
+        <h2 style="color: #10b981;">👁️ Platform Audit & User Management</h2>
+        <p class="text-muted">Live tracking of every action taken by every user on the CiviSync platform.</p>
+      </div>
+      
+      <div class="grid-2">
+        <div class="card" style="max-height: 600px; overflow-y: auto;">
+          <h3 style="margin-bottom: 1rem;">Registered Users Database</h3>
+          <table style="width: 100%; font-size: 0.8rem;">
+            <thead style="background: var(--bg-app);">
+              <tr><th style="padding:10px;">Name</th><th style="padding:10px;">Email</th><th style="padding:10px;">Role</th><th style="padding:10px;">Points</th></tr>
+            </thead>
+            <tbody id="sa-users-table"></tbody>
+          </table>
+        </div>
+        <div class="card" style="max-height: 600px; overflow-y: auto; background: #0f172a; color: white;">
+          <h3 style="margin-bottom: 1rem; color: #10b981;">Live Audit Trail</h3>
+          <div id="sa-audit-logs" style="display: flex; flex-direction: column; gap: 0.8rem;"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 id="mod-title">Issue Title</h3>
+          <p class="text-xs text-muted" style="margin-top:0.25rem;">ID: <span id="mod-id" class="table-id"></span> | Reported: <span id="mod-time"></span></p>
+          <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+            <span class="badge badge-outline" id="mod-cat"></span>
+            <span id="mod-prio"></span>
+            <span id="mod-stat"></span>
+          </div>
+        </div>
+        <button class="btn btn-outline" style="border:none; padding:0.5rem;" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="mod-temp-sec"></div>
+        <img id="mod-img" src="" style="width:100%; height:200px; object-fit:cover; border-radius:var(--radius-md); margin-bottom:1rem; border:1px solid var(--border);">
+        
+        <div class="timeline-container" style="background:var(--bg-app); border:1px solid var(--border); border-radius:var(--radius-md); padding: 1.5rem; margin-bottom: 1.5rem;">
+          <h4 style="font-size:0.875rem; margin-bottom:1rem; color:var(--primary);">📡 Live Tracking Timeline</h4>
+          <div id="mod-timeline" class="timeline"></div>
+        </div>
+
+        <div class="budget-box">
+          <h4 style="font-size:0.875rem; margin-bottom:0.5rem; color:var(--text-primary);">💰 Financial & Schedule Status</h4>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="mod-budget-badge"></span>
+            <span id="mod-schedule" class="text-sm font-medium text-muted"></span>
+          </div>
+        </div>
+
+        <p class="text-sm font-semibold" style="margin-bottom:0.25rem;">Description</p>
+        <p id="mod-desc" class="text-sm text-muted" style="margin-bottom:1rem; line-height:1.6;"></p>
+
+        <div class="volunteer-box">
+          <div>
+            <h4 style="font-size:0.875rem; color:var(--purple); margin-bottom:0.25rem;">🤝 Community Action Needed</h4>
+            <p class="text-xs text-muted">Government funds are constrained. <span id="mod-vol-count">0</span> citizens have volunteered to help fix this.</p>
+          </div>
+          <button class="btn ripple-element" style="background:var(--purple); color:white; border-radius:50px; font-size:0.8rem;" onclick="openNGOForm(activeModalIssueId)">Volunteer / Adopt</button>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:1rem; margin-top:1rem;">
+          <p class="text-xs text-muted">Auto-Assigned to: <strong id="mod-dept" style="color:var(--text-primary);"></strong></p>
+          <button class="btn btn-blue text-xs ripple-element" style="border-radius: 50px;" onclick="upvoteIssue()" id="mod-upvote">⬆ Upvote (<span id="mod-upv-cnt"></span>)</button>
+        </div>
+
+        <div id="cit-action-area" class="hidden" style="margin-top:1rem; display:flex; gap:0.5rem;">
+          <button class="btn text-xs ripple-element hidden" id="btn-escalate" style="background:#ea580c; color:white; flex:1;" onclick="manualEscalate()">🚨 Escalate Issue</button>
+          <button class="btn text-xs ripple-element hidden" id="btn-rti" style="background:#0f172a; color:white; flex:1;" onclick="generateRTIDraft()">📄 File RTI Draft</button>
+        </div>
+
+        <div id="admin-update-area" class="hidden" style="margin-top:1.5rem; padding-top:1.5rem; border-top:1px solid var(--border);">
+          <h4 style="font-size:0.875rem; margin-bottom:1rem;">Authority Controls</h4>
+          <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+            <select id="admin-sel-stat" class="form-control" style="flex:1;">
+              <option value="pending">Pending</option>
+              <option value="in progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+            </select>
+            <select id="admin-sel-budget" class="form-control" style="flex:1;">
+              <option value="Funded">Funded</option>
+              <option value="Pending Budget Constraint">Pending Budget Constraint</option>
+              <option value="Scheduled for Next Cycle">Scheduled Next Cycle</option>
+            </select>
+          </div>
+          <button class="btn btn-blue ripple-element" style="border-radius: 50px; width:100%;" onclick="adminSaveStatus()">Save & Update Audit Trail</button>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
-<script type="text/javascript">
-function googleTranslateElementInit() {
-  new google.translate.TranslateElement({pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
-}
-</script>
-<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  <div class="modal-overlay" id="ngo-modal">
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 style="color: var(--purple);">🤝 Pledge Support Form</h3>
+        <button class="btn btn-outline" style="border:none; padding:0.5rem;" onclick="closeNGOForm()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="submitNGOForm(event)">
+          <div class="form-group">
+            <label class="form-label">Organization / Individual Name</label>
+            <input type="text" class="form-control" id="ngo-name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contact Email</label>
+            <input type="email" class="form-control" id="ngo-email" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Resource Pledged</label>
+            <select class="form-control" id="ngo-resource">
+              <option>Volunteer Manpower</option>
+              <option>Financial Donation</option>
+              <option>Raw Materials / Equipment</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Message to Authority</label>
+            <textarea class="form-control" id="ngo-msg" required></textarea>
+          </div>
+          <button type="submit" class="btn ripple-element" style="width: 100%; padding: 1rem; border-radius: 50px; background:var(--purple); color:white;">Send Proposal via Email</button>
+        </form>
+      </div>
+    </div>
+  </div>
 
-<script src="script.js"></script>
+  <div class="modal-overlay" id="forgot-modal">
+    <div class="modal" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3 style="color: var(--primary);">Secure Password Reset</h3>
+        <button class="btn btn-outline" style="border:none; padding:0.5rem;" onclick="closeForgotModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="forgot-step-1" onsubmit="requestPasswordReset(event)">
+          <p class="text-sm text-muted" style="margin-bottom:1rem;">Enter your registered email. We will send a 4-digit OTP to verify your identity.</p>
+          <div class="form-group">
+            <input type="email" class="form-control" id="forgot-email" placeholder="citizen@city.com" required>
+          </div>
+          <button type="submit" class="btn btn-blue ripple-element" style="width:100%; border-radius:50px;">Send Reset OTP</button>
+        </form>
+        <form id="forgot-step-2" class="hidden" onsubmit="verifyResetOTP(event)">
+          <p class="text-sm text-success" style="margin-bottom:1rem; font-weight:bold;">✅ OTP Sent to your email!</p>
+          <div class="form-group">
+            <label class="form-label">Enter 4-Digit OTP</label>
+            <input type="text" class="form-control" id="forgot-otp" placeholder="1234" required>
+          </div>
+          <div class="form-group" style="position:relative;">
+            <label class="form-label">New Password</label>
+            <input type="password" class="form-control" id="forgot-new-pwd" required>
+            <span style="position:absolute; right:15px; top:38px; cursor:pointer; opacity:0.6;" onclick="togglePassword('forgot-new-pwd')">👁️</span>
+          </div>
+          <button type="submit" class="btn btn-blue ripple-element" style="width:100%; border-radius:50px;">Reset Password & Login</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="pdf-content" class="hidden" style="padding: 40px; background: white; color: black; width: 800px; font-family: 'Helvetica', sans-serif;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+      <h1 style="color: #2563eb; margin: 0;">CiviSync Escalation Report</h1>
+      <p style="margin: 0; color: #64748b;"><strong>Generated:</strong> <span id="pdf-date"></span></p>
+    </div>
+    <h3 style="margin-top: 30px; color: #1e293b;">Executive Summary</h3>
+    <p style="line-height: 1.6; color: #334155;">This automated document highlights critical civic issues delayed due to verified municipal budget constraints.</p>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px;">
+      <thead>
+        <tr style="background: #f8fafc; text-align: left;">
+          <th style="padding: 12px; border: 1px solid #e2e8f0;">Issue ID</th>
+          <th style="padding: 12px; border: 1px solid #e2e8f0;">Issue Description</th>
+          <th style="padding: 12px; border: 1px solid #e2e8f0;">Assigned Department</th>
+          <th style="padding: 12px; border: 1px solid #e2e8f0;">Budget Status</th>
+        </tr>
+      </thead>
+      <tbody id="pdf-table-body"></tbody>
+    </table>
+  </div>
+
+  <div id="rti-pdf-content" class="hidden" style="padding: 40px; background: white; color: black; width: 800px; font-family: serif;">
+    <h2 style="text-align:center; text-decoration: underline;">RIGHT TO INFORMATION (RTI) ACT, 2005</h2>
+    <p><strong>Date:</strong> <span id="rti-date"></span></p>
+    <p><strong>Subject:</strong> Request for information regarding pending civic complaint ID: <span id="rti-id"></span></p>
+    <p>I filed a complaint on the CiviSync platform regarding <strong><span id="rti-title"></span></strong>. This issue has been pending for over 30 days without resolution.</p>
+  </div>
+
+  <div id="notice-pdf-content" class="hidden" style="padding: 40px; background: white; color: black; width: 800px; font-family: sans-serif; border: 5px solid #ea580c;">
+    <h1 style="color: #ea580c; text-align:center;">OFFICIAL SHOWCAUSE NOTICE</h1>
+    <p style="text-align:right;"><strong>Date:</strong> <span id="notice-date"></span></p>
+    <p><strong>To Department:</strong> <span id="notice-dept"></span></p>
+    <hr>
+    <h3 style="margin-top:20px;">Re: Severe Negligence on Issue ID: <span id="notice-id"></span></h3>
+    <p>This automated notice is to inform you that the issue titled <strong>"<span id="notice-title"></span>"</strong> has breached all municipal SLAs and is currently under <strong>Level 3 Escalation</strong>.</p>
+  </div>
+
+  <div class="chatbot-wrapper">
+    <button class="chat-toggle-btn ripple-element" onclick="toggleChat()">💬</button>
+    <div id="chat-window" class="chat-window hidden">
+      <div class="chat-header" style="background: linear-gradient(90deg, #1e3a8a, #3b82f6);">
+        <span style="display:flex; align-items:center; gap:10px;">
+          <div style="width:10px; height:10px; background:#10b981; border-radius:50%; box-shadow: 0 0 8px #10b981;"></div>
+          🤖 Local CiviBot
+        </span>
+        <button onclick="toggleChat()" style="background:none; color:white; font-size:1.2rem; border:none; cursor:pointer;">✕</button>
+      </div>
+      <div class="chat-body" id="chat-body">
+        <div class="chat-msg msg-bot">
+          Hi! I am the local CiviBot. I can answer questions and instantly navigate the site for you! Try asking me to report an issue, view points, or track complaints.
+          <div class="chat-quick-replies" style="margin-top:10px; display:flex; gap:5px; flex-wrap:wrap;">
+            <button class="chat-chip" onclick="quickReply('I want to report an issue')">Report Issue</button>
+            <button class="chat-chip" onclick="quickReply('Take me to track complaints')">Track Delays</button>
+            <button class="chat-chip" onclick="quickReply('How do I volunteer?')">Volunteer</button>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area" style="background: var(--bg-surface);">
+        <input type="text" id="chat-msg" class="form-control" placeholder="Ask CiviBot to do something..." style="border-radius: 50px; padding: 0.75rem 1.25rem;" onkeypress="if(event.key==='Enter') sendLocalChat()">
+        <button class="btn btn-blue ripple-element" style="border-radius: 50%; width: 45px; height: 45px; padding: 0; display: flex; align-items: center; justify-content: center;" onclick="sendLocalChat()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en', 
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+      }, 'google_translate_element');
+    }
+  </script>
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+  <script src="script.js?v=7"></script>
 
 </body>
 </html>
