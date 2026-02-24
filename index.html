@@ -16,6 +16,8 @@
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -26,6 +28,20 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+  <div id="pwa-install-banner" class="hidden pwa-banner">
+    <div style="display:flex; align-items:center; gap: 10px;">
+      <img src="https://cdn-icons-png.flaticon.com/512/2942/2942821.png" alt="App Icon" style="width: 30px; height: 30px; filter: brightness(0) invert(1);">
+      <div>
+        <span style="font-weight: 700; color: white; display: block;">Install CiviSync</span>
+        <span style="font-size: 0.75rem; color: #cbd5e1;">Add to Home Screen for a native experience.</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <button class="btn" style="background: white; color: var(--primary); padding: 0.4rem 1rem; border-radius: 50px; font-weight: bold;" onclick="installPWA()">Install</button>
+      <button class="btn" style="background: rgba(255,255,255,0.2); color: white; padding: 0.4rem 0.8rem; border-radius: 50px;" onclick="dismissPWA()">✕</button>
+    </div>
+  </div>
 
   <div id="global-loader" class="loader-overlay">
     <div class="cyber-loader-container">
@@ -343,7 +359,7 @@
           </div>
         </div>
         <div style="text-align: center; padding-top: 2rem; font-size: 0.875rem;">
-          &copy; 2026 CiviSync Platform. All rights reserved.
+          &copy; 2026 CiviSync Platform. Developed by HACK OVERFLOW.
         </div>
       </footer>
     </div>
@@ -1042,6 +1058,11 @@
           </div>
         </div>
       </div>
+
+      <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header"><span class="card-title">🔥 Issue Density Heatmap</span><span class="text-xs text-muted">Identifies critical maintenance zones</span></div>
+        <div id="analytics-heatmap" style="height: 400px; width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); z-index: 1;"></div>
+      </div>
       
       <div class="grid-2">
         <div class="card">
@@ -1228,7 +1249,20 @@
 
         <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:1rem; margin-top:1rem;">
           <p class="text-xs text-muted">Auto-Assigned to: <strong id="mod-dept" style="color:var(--text-primary);"></strong></p>
-          <button class="btn btn-blue text-xs ripple-element" style="border-radius: 50px;" onclick="upvoteIssue()" id="mod-upvote">⬆ Upvote (<span id="mod-upv-cnt"></span>)</button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-outline text-xs ripple-element" style="border-radius: 50px;" onclick="shareIssue()" id="mod-share">🔗 Share</button>
+            <button class="btn btn-blue text-xs ripple-element" style="border-radius: 50px;" onclick="upvoteIssue()" id="mod-upvote">⬆ Upvote (<span id="mod-upv-cnt"></span>)</button>
+          </div>
+        </div>
+
+        <div class="comments-section" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+          <h4 style="font-size:0.875rem; margin-bottom:1rem; color: var(--text-primary);">💬 Community Discussion</h4>
+          <div id="mod-comments-list" style="max-height: 180px; overflow-y: auto; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 5px;">
+            </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="text" id="mod-comment-input" class="form-control" placeholder="Add a public comment..." style="padding: 0.6rem; font-size: 0.85rem; border-radius: 50px;">
+            <button class="btn btn-blue text-xs ripple-element" style="border-radius: 50px; padding: 0.6rem 1rem;" onclick="submitComment()">Post</button>
+          </div>
         </div>
 
         <div id="cit-action-area" class="hidden" style="margin-top:1rem; display:flex; gap:0.5rem;">
@@ -1394,7 +1428,7 @@
   </script>
   <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
-  <script src="script.js?v=7"></script>
+  <script src="script.js?v=15"></script>
 
 </body>
 </html>
