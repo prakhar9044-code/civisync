@@ -407,39 +407,34 @@ function toggleCitAuth(action) {
   document.getElementById('btn-reg-cit').style.background = action === 'register' ? 'var(--bg-surface)' : 'transparent';
 }
 
-/* --- SOCIAL LOGIN (HACKATHON DEMO MODE) --- */
+/* --- SOCIAL LOGIN (REAL OAUTH MODE) --- */
 async function socialLogin(provider) {
-  showLoader();
+  if(!supabaseClient) return showToast("Database not connected.", "warning", "🚫");
   
-  // Format the provider name nicely for the UI
-  let providerName = provider === 'linkedin_oidc' ? 'LinkedIn' : provider.charAt(0).toUpperCase() + provider.slice(1);
-
-  // Simulate a 1.5 second network delay to make it look incredibly realistic
-  setTimeout(() => {
-    // Generate a high-quality mock user based on the clicked platform
-    currentUser = {
-      id: `oauth-${provider}-123`,
-      name: `Prakhar (${providerName})`,
-      email: `prakhar@${provider}.com`,
-      role: 'citizen',
-      points: 250,
-      reported: 1,
-      volunteered: 0,
-      bio: `Imported directly from ${providerName} Profile.`
-    };
-
-    // Save session and log them in
-    sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
+  showLoader();
+  showToast(`Redirecting to ${provider}...`, 'primary', '🔗');
+  
+  try {
+    // This calls the REAL Supabase API and redirects the user to Google/Facebook/LinkedIn
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({ 
+      provider: provider, 
+      options: { 
+        redirectTo: window.location.origin 
+      } 
+    });
     
-    applyLoginUI();
-    navigate('track');
+    if(error) { 
+        hideLoader(); 
+        alert("OAuth Error: " + error.message); 
+    }
+    // Note: The browser will leave your site, go to Google, and come back.
+    // When it comes back, the `onAuthStateChange` listener at the top of this file will catch the real user!
     
-    // Show a beautiful success toast
-    showToast(`Successfully connected via ${providerName}!`, 'success', '🔗');
+  } catch (err) {
     hideLoader();
-  }, 1500);
+    alert("Social Login Failed: " + err.message);
+  }
 }
-
 /* --- LOGIN OTP --- */
 async function handleCitizenOTPFlow(e) {
   e.preventDefault(); 
