@@ -266,12 +266,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ==========================================================================
-   8. DB ABSTRACTIONS & SETTINGS SYNC (WITH FAST ANTI-FREEZE)
+   8. DB ABSTRACTIONS & SETTINGS SYNC
    ========================================================================== */
 async function getDB() { 
   if(!supabaseClient) return []; 
   try {
-      // Reduced to 2 seconds to prevent loader getting stuck!
       const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2000));
       let { data, error } = await Promise.race([
           supabaseClient.from('issues').select('*').order('created', { ascending: false }),
@@ -374,7 +373,7 @@ async function runAutoEscalationEngine() {
 }
 
 /* ==========================================================================
-   9. AUTHENTICATION & OTP (FAST ANTI-FREEZE)
+   9. AUTHENTICATION & OTP
    ========================================================================== */
 function togglePassword(inputId) {
   const input = document.getElementById(inputId);
@@ -406,6 +405,39 @@ function toggleCitAuth(action) {
   document.getElementById('form-cit-register').classList.toggle('hidden', action !== 'register');
   document.getElementById('btn-login-cit').style.background = action === 'login' ? 'var(--bg-surface)' : 'transparent';
   document.getElementById('btn-reg-cit').style.background = action === 'register' ? 'var(--bg-surface)' : 'transparent';
+}
+
+/* --- SOCIAL LOGIN (HACKATHON DEMO MODE) --- */
+async function socialLogin(provider) {
+  showLoader();
+  
+  // Format the provider name nicely for the UI
+  let providerName = provider === 'linkedin_oidc' ? 'LinkedIn' : provider.charAt(0).toUpperCase() + provider.slice(1);
+
+  // Simulate a 1.5 second network delay to make it look incredibly realistic
+  setTimeout(() => {
+    // Generate a high-quality mock user based on the clicked platform
+    currentUser = {
+      id: `oauth-${provider}-123`,
+      name: `Prakhar (${providerName})`,
+      email: `prakhar@${provider}.com`,
+      role: 'citizen',
+      points: 250,
+      reported: 1,
+      volunteered: 0,
+      bio: `Imported directly from ${providerName} Profile.`
+    };
+
+    // Save session and log them in
+    sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
+    
+    applyLoginUI();
+    navigate('track');
+    
+    // Show a beautiful success toast
+    showToast(`Successfully connected via ${providerName}!`, 'success', '🔗');
+    hideLoader();
+  }, 1500);
 }
 
 /* --- LOGIN OTP --- */
@@ -718,8 +750,7 @@ async function reRenderAllActive() {
 async function navigate(viewId) {
   showLoader();
   
-  // THE ABSOLUTE MASTER FAILSAFE - Will turn off loader after 2.5s no matter what happens
-  setTimeout(hideLoader, 2500);
+  const loaderFailsafe = setTimeout(hideLoader, 2500);
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const targetView = document.getElementById(`view-${viewId}`); 
@@ -764,6 +795,7 @@ async function navigate(viewId) {
   
   setTimeout(() => {
     initScrollAnimations();
+    clearTimeout(loaderFailsafe); 
     hideLoader();
   }, 500);
 }
