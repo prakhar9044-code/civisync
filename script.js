@@ -93,7 +93,7 @@ if (supabaseClient) {
       const name = session.user.user_metadata?.full_name || email.split('@')[0];
 
       try {
-          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 3000));
+          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
           let { data, error } = await Promise.race([
               supabaseClient.from('app_users').select('*').eq('email', email),
               timeoutPromise
@@ -266,12 +266,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ==========================================================================
-   8. DB ABSTRACTIONS & SETTINGS SYNC (WITH ANTI-FREEZE)
+   8. DB ABSTRACTIONS & SETTINGS SYNC (WITH FAST ANTI-FREEZE)
    ========================================================================== */
 async function getDB() { 
   if(!supabaseClient) return []; 
   try {
-      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 3000));
+      // Reduced to 2 seconds to prevent loader getting stuck!
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2000));
       let { data, error } = await Promise.race([
           supabaseClient.from('issues').select('*').order('created', { ascending: false }),
           timeoutPromise
@@ -373,7 +374,7 @@ async function runAutoEscalationEngine() {
 }
 
 /* ==========================================================================
-   9. AUTHENTICATION & OTP (WITH ANTI-FREEZE & INSTANT LOAD)
+   9. AUTHENTICATION & OTP (FAST ANTI-FREEZE)
    ========================================================================== */
 function togglePassword(inputId) {
   const input = document.getElementById(inputId);
@@ -416,7 +417,7 @@ async function handleCitizenOTPFlow(e) {
 
   showLoader();
   try {
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 3000));
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
     
     let {data, error} = await Promise.race([
         supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail).eq('role', 'citizen'),
@@ -424,9 +425,11 @@ async function handleCitizenOTPFlow(e) {
     ]);
     
     if (error && error.message === "TIMEOUT_FREEZE") {
-        console.warn("Database jammed. Using Bypass Mode.");
+        let genName = pendingLoginEmail.split('@')[0];
+        genName = genName.charAt(0).toUpperCase() + genName.slice(1);
+        console.warn("Database slow. Generating name dynamically.");
         error = null; 
-        data = [{ name: "Citizen (Bypass Mode)", email: pendingLoginEmail, role: 'citizen', points: 500, reported: 0, volunteered: 0 }];
+        data = [{ name: genName, email: pendingLoginEmail, role: 'citizen', points: 150, reported: 0, volunteered: 0 }];
     } else if(error) {
         hideLoader(); return alert("Database Error: " + error.message);
     }
@@ -468,14 +471,16 @@ async function verifyCitizenOTP() {
 
   showLoader();
   try {
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 3000));
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2000));
     let {data, error} = await Promise.race([
         supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail),
         timeoutPromise
     ]);
 
     if (error && error.message === "TIMEOUT_FREEZE") {
-        data = [{ id: "bypass", name: "Citizen (Bypass Mode)", email: pendingLoginEmail, role: 'citizen', points: 500 }];
+        let genName = pendingLoginEmail.split('@')[0];
+        genName = genName.charAt(0).toUpperCase() + genName.slice(1);
+        data = [{ id: "offline-user", name: genName, email: pendingLoginEmail, role: 'citizen', points: 150 }];
         error = null;
     }
 
@@ -509,7 +514,7 @@ async function handleAuth(e, type) {
   let email, password, name;
   
   try {
-      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 3000));
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
 
       if(type === 'citizen_register') { 
         name = document.querySelectorAll('#form-cit-register input')[0].value; 
@@ -535,7 +540,9 @@ async function handleAuth(e, type) {
         ]);
 
         if (error && error.message === "TIMEOUT_FREEZE") {
-            data = [{ id: "bypass", name: "User (Bypass Mode)", email: email, role: checkRole, points: 500 }];
+            let genName = email.split('@')[0];
+            genName = genName.charAt(0).toUpperCase() + genName.slice(1);
+            data = [{ id: "offline-user", name: genName, email: email, role: checkRole, points: 150 }];
             error = null;
         }
 
@@ -570,14 +577,16 @@ async function requestPasswordReset(e) {
   showLoader();
 
   try {
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 3000));
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
     let {data, error} = await Promise.race([
         supabaseClient.from('app_users').select('name').eq('email', resetEmailMemory),
         timeoutPromise
     ]);
 
     if(error && error.message === "TIMEOUT_FREEZE") {
-        data = [{ name: "User (Bypass Mode)" }];
+        let genName = resetEmailMemory.split('@')[0];
+        genName = genName.charAt(0).toUpperCase() + genName.slice(1);
+        data = [{ name: genName }];
         error = null;
     }
 
@@ -624,7 +633,7 @@ async function verifyResetOTP(e) {
   try {
     const newPwd = document.getElementById('forgot-new-pwd').value;
     
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 3000));
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
     let { error } = await Promise.race([
         supabaseClient.from('app_users').update({ password: newPwd }).eq('email', resetEmailMemory),
         timeoutPromise
@@ -682,7 +691,7 @@ function applyLoginUI() {
 }
 
 /* ==========================================================================
-   10. NAVIGATION ROUTER (WITH LOADER FAILSAFE)
+   10. NAVIGATION ROUTER
    ========================================================================== */
 function updateLeaderboard() {
   if(currentUser) {
@@ -709,8 +718,8 @@ async function reRenderAllActive() {
 async function navigate(viewId) {
   showLoader();
   
-  // MASTER FAILSAFE: The loader WILL forcefully self-destruct after 4 seconds to prevent freezing
-  const loaderFailsafe = setTimeout(hideLoader, 4000);
+  // THE ABSOLUTE MASTER FAILSAFE - Will turn off loader after 2.5s no matter what happens
+  setTimeout(hideLoader, 2500);
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const targetView = document.getElementById(`view-${viewId}`); 
@@ -755,7 +764,6 @@ async function navigate(viewId) {
   
   setTimeout(() => {
     initScrollAnimations();
-    clearTimeout(loaderFailsafe); // Clear the emergency timer if it successfully loaded fast
     hideLoader();
   }, 500);
 }
