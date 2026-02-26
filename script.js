@@ -1,5 +1,5 @@
 /* ==========================================================================
-   1. CRASH-PROOF API INITIALIZATIONS & OAUTH FIX
+   1. CRASH-PROOF API INITIALIZATIONS
    ========================================================================== */
 let supabaseClient = null;
 
@@ -9,13 +9,13 @@ try {
   const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9pdmRyY3lkbGZjdmlwemZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2ODk0MTQsImV4cCI6MjA4NzI2NTQxNH0.cjoVyfucX3nu0BjBreN2FapxL9h0_dISr6KSat4TNZY"; 
   supabaseClient = createClient(supabaseUrl, supabaseKey);
 } catch (error) { 
-  console.error("Supabase Error", error); 
+  console.error("Supabase Init Error:", error); 
 }
 
 try { 
   emailjs.init("x81DiBvSLoBxiEnmx"); 
 } catch (error) { 
-  console.error("EmailJS Error", error); 
+  console.error("EmailJS Init Error:", error); 
 }
 
 /* ==========================================================================
@@ -25,7 +25,7 @@ let currentUser = JSON.parse(sessionStorage.getItem('civisync_user')) || null;
 let trackTabActive = 'All'; 
 let mapInstance = null; 
 let dedicatedMapInstance = null; 
-let heatmapInstance = null; // NEW: Heatmap Instance
+let heatmapInstance = null; 
 let activeModalIssueId = null; 
 let charts = {}; 
 let truckTweens = [];
@@ -35,10 +35,10 @@ let pendingLoginEmail = "";
 let realGeneratedOTP = "";
 let resetEmailMemory = "";
 let resetOTPMemory = "";
-let deferredPrompt; // NEW: PWA Install Prompt
+let deferredPrompt; 
 
 /* ==========================================================================
-   3. PWA INSTALL BANNER LOGIC (NEW)
+   3. PWA INSTALL BANNER LOGIC
    ========================================================================== */
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
@@ -56,16 +56,14 @@ async function installPWA() {
   if (deferredPrompt) {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      console.log('User accepted the App install');
-    }
+    console.log(`PWA Install: ${outcome}`);
     deferredPrompt = null;
   }
   closePWA();
 }
 
 /* ==========================================================================
-   4. GLOBAL LOADER ANIMATION
+   4. GLOBAL LOADER ENGINE (BULLETPROOFED)
    ========================================================================== */
 function showLoader() { 
   const loader = document.getElementById('global-loader');
@@ -76,12 +74,16 @@ function hideLoader() {
   const loader = document.getElementById('global-loader');
   if(loader) { loader.style.opacity = '0'; loader.style.pointerEvents = 'none'; }
 }
-setTimeout(hideLoader, 1500);
+
+// Absolute fallback: Hide loader when DOM fully paints, or after 3.5s max
+window.addEventListener('load', hideLoader);
+setTimeout(hideLoader, 3500);
 
 /* ==========================================================================
-   5. SCROLL ANIMATIONS & FAQ LOGIC
+   5. SCROLL ANIMATIONS & INTERACTIVITY
    ========================================================================== */
 function initScrollAnimations() {
+  if (typeof IntersectionObserver === 'undefined') return;
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('is-visible'); });
   }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
@@ -91,12 +93,13 @@ function initScrollAnimations() {
 
 function toggleFAQ(element) {
   const parentItem = element.parentElement;
+  if (!parentItem) return;
   document.querySelectorAll('.faq-item').forEach(item => { if(item !== parentItem) item.classList.remove('active'); });
   parentItem.classList.toggle('active');
 }
 
 /* ==========================================================================
-   6. OAUTH SESSION CATCHER
+   6. OAUTH SESSION CATCHER (PRODUCTION READY)
    ========================================================================== */
 if (supabaseClient) {
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
@@ -106,30 +109,33 @@ if (supabaseClient) {
       const name = session.user.user_metadata?.full_name || email.split('@')[0];
 
       try {
-          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
+          // Generous 10-second timeout for cold DB starts
+          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 10000));
           let { data, error } = await Promise.race([
               supabaseClient.from('app_users').select('*').eq('email', email),
               timeoutPromise
           ]);
     
           if (error && error.message === "TIMEOUT_FREEZE") {
+              console.warn("DB Cold Start - Using graceful fallback mode");
               currentUser = { name: name, email: email, role: 'citizen', points: 150 };
           } else if (!data || data.length === 0) {
             let { data: newUser } = await supabaseClient.from('app_users').insert([{ name: name, email: email, password: 'oauth_user_secure', role: 'citizen', points: 150 }]).select();
-            currentUser = newUser[0];
+            currentUser = newUser ? newUser[0] : { name: name, email: email, role: 'citizen', points: 150 };
           } else {
             currentUser = data[0];
           }
       } catch(err) {
+          console.error("OAuth DB Fetch Error:", err);
           currentUser = { name: name, email: email, role: 'citizen', points: 150 };
       }
 
       sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
-      window.history.replaceState(null, null, window.location.pathname); 
+      window.history.replaceState(null, null, window.location.pathname); // Clears Vercel/Supabase tokens from URL
       
       applyLoginUI();
       navigate(currentUser.role === 'citizen' ? 'track' : 'admin');
-      showToast(`Welcome securely via Social Login, ${currentUser.name}!`, 'success', '✅');
+      showToast(`Welcome via Social Login, ${currentUser.name}!`, 'success', '✅');
       hideLoader();
     }
   });
@@ -153,10 +159,11 @@ function quickReply(txt) {
 
 function sendLocalChat() {
   const input = document.getElementById('chat-msg'); 
+  if(!input) return;
   const rawTxt = input.value.trim().toLowerCase(); 
   if(!rawTxt) return;
-  const body = document.getElementById('chat-body'); 
   
+  const body = document.getElementById('chat-body'); 
   body.innerHTML += `<div class="chat-msg msg-user">${input.value}</div>`; 
   input.value = ''; 
   body.scrollTop = body.scrollHeight;
@@ -166,7 +173,9 @@ function sendLocalChat() {
   body.scrollTop = body.scrollHeight;
 
   setTimeout(() => {
-    document.getElementById(typingId).remove();
+    const typeEl = document.getElementById(typingId);
+    if(typeEl) typeEl.remove();
+    
     let reply = "I'm the local CiviBot! Try asking me to 'report an issue', 'track complaints', or 'volunteer'.";
 
     if (rawTxt.includes('report') || rawTxt.includes('pothole') || rawTxt.includes('issue')) {
@@ -217,8 +226,6 @@ async function dispatchEmail(userEmail, userName, actionTitle, actionDetails) {
     });
   } catch (error) { console.error("Email Dispatch Failed:", error); }
 }
-
-function createHash() { return '0x' + Math.random().toString(16).slice(2, 10); }
 
 function createRipple(event) {
   const button = event.currentTarget; 
@@ -271,19 +278,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ==========================================================================
-   9. DB ABSTRACTIONS & SETTINGS SYNC
+   9. DB ABSTRACTIONS & SETTINGS SYNC (WITH SECURE TIMEOUTS)
    ========================================================================== */
 async function getDB() { 
   if(!supabaseClient) return []; 
   try {
-      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2000));
+      // 10 Second timeout ensures slow networks don't break the app, but prevents infinite loading
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 10000));
       let { data, error } = await Promise.race([
           supabaseClient.from('issues').select('*').order('created', { ascending: false }),
           timeoutPromise
       ]);
       
       if (error) {
-          console.warn("getDB Anti-Freeze triggered.");
+          console.warn("getDB Slow Response - Check Database RLS or Internet Connection.");
           return []; 
       }
       return data || []; 
@@ -309,7 +317,10 @@ async function updateUserStats(pointsAdd, reportedAdd, volAdd, actionName) {
   if(!currentUser || !supabaseClient) return;
   currentUser.points += pointsAdd; currentUser.reported += reportedAdd; currentUser.volunteered += volAdd;
   sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
-  await supabaseClient.from('app_users').update({ points: currentUser.points, reported: currentUser.reported, volunteered: currentUser.volunteered }).eq('id', currentUser.id);
+  
+  try {
+    await supabaseClient.from('app_users').update({ points: currentUser.points, reported: currentUser.reported, volunteered: currentUser.volunteered }).eq('id', currentUser.id);
+  } catch(e) { console.error("Could not sync points to DB"); }
   
   if(pointsAdd > 0) {
     await logPointsHistory(actionName, pointsAdd);
@@ -329,20 +340,25 @@ async function saveSettingsToDB() {
   const phone = document.getElementById('set-phone').value;
   const bio = document.getElementById('set-bio').value;
   
-  const { error } = await supabaseClient.from('app_users').update({ phone: phone, bio: bio }).eq('id', currentUser.id);
-  hideLoader();
-  
-  if(error) {
-    showToast("Failed to sync data", "danger");
-  } else {
-    currentUser.phone = phone; currentUser.bio = bio;
-    sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
-    showToast("Profile Synced to Database!", "success", "✅");
+  try {
+      const { error } = await supabaseClient.from('app_users').update({ phone: phone, bio: bio }).eq('id', currentUser.id);
+      hideLoader();
+      
+      if(error) {
+        showToast("Failed to sync data. Please check connection.", "danger");
+      } else {
+        currentUser.phone = phone; currentUser.bio = bio;
+        sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
+        showToast("Profile Synced to Database!", "success", "✅");
+      }
+  } catch(err) {
+      hideLoader(); showToast("Network Error", "danger");
   }
 }
 
 async function runAutoEscalationEngine() {
   let db = await getDB();
+  if(!db || db.length === 0) return;
   let now = new Date();
   
   for (let i of db) {
@@ -365,7 +381,7 @@ async function runAutoEscalationEngine() {
       if(newEscLevel === 2) newTimelineEvent = 'Escalated to Municipal Head (Level 2)';
       if(newEscLevel === 1) newTimelineEvent = 'Escalated to Ward Officer (Level 1)';
       
-      if (newTimelineEvent && !i.timeline.find(t=>t.title.includes(newTimelineEvent))) {
+      if (newTimelineEvent && i.timeline && !i.timeline.find(t=>t.title.includes(newTimelineEvent))) {
         updates.timeline = [...i.timeline, {title: newTimelineEvent, date: new Date().toISOString(), type:'escalated'}];
       }
       needsUpdate = true;
@@ -379,7 +395,7 @@ async function runAutoEscalationEngine() {
    ========================================================================== */
 function togglePassword(inputId) {
   const input = document.getElementById(inputId);
-  if(input.type === "password") { input.type = "text"; } else { input.type = "password"; }
+  if(input) { if(input.type === "password") input.type = "text"; else input.type = "password"; }
 }
 
 function switchAuthTab(type) {
@@ -404,33 +420,25 @@ function toggleCitAuth(action) {
   document.getElementById('btn-reg-cit').style.background = action === 'register' ? 'var(--bg-surface)' : 'transparent';
 }
 
-/* --- SOCIAL LOGIN (HYBRID MODE: REAL GOOGLE, DEMO OTHERS) --- */
+/* --- SOCIAL LOGIN (REAL GOOGLE AUTH) --- */
 async function socialLogin(provider) {
   if(!supabaseClient) return showToast("Database not connected.", "warning", "🚫");
 
-  if (provider === 'google') {
-    showLoader();
-    showToast(`Redirecting to Google...`, 'primary', '🔗');
-    try {
-      const { data, error } = await supabaseClient.auth.signInWithOAuth({ 
-        provider: provider, 
-        options: { redirectTo: window.location.origin } 
-      });
-      if(error) { hideLoader(); alert("OAuth Error: " + error.message); }
-    } catch (err) { hideLoader(); alert("Social Login Failed: " + err.message); }
-  } else {
-    showLoader();
-    let providerName = provider === 'linkedin_oidc' ? 'LinkedIn' : provider.charAt(0).toUpperCase() + provider.slice(1);
-    showToast(`Connecting to ${providerName}...`, 'primary', '🔗');
-
-    setTimeout(() => {
-      currentUser = { id: `oauth-${provider}-123`, name: `Prakhar (${providerName})`, email: `prakhar@${provider}.com`, role: 'citizen', points: 250, reported: 1, volunteered: 0, bio: `Imported securely from ${providerName}.` };
-      sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
-      applyLoginUI();
-      navigate('track');
-      showToast(`Successfully connected via ${providerName}!`, 'success', '✅');
-      hideLoader();
-    }, 1800);
+  showLoader();
+  showToast(`Redirecting to ${provider}...`, 'primary', '🔗');
+  
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({ 
+      provider: provider, 
+      options: { redirectTo: window.location.origin } 
+    });
+    
+    if(error) { 
+        hideLoader(); 
+        alert("OAuth Error: Ensure you are NOT running this inside a VS Code preview iframe."); 
+    }
+  } catch (err) {
+    hideLoader(); alert("Social Login Failed: " + err.message);
   }
 }
 
@@ -442,19 +450,17 @@ async function handleCitizenOTPFlow(e) {
 
   showLoader();
   try {
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 10000));
     let {data, error} = await Promise.race([
         supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail).eq('role', 'citizen'),
         timeoutPromise
     ]);
     
     if (error && error.message === "TIMEOUT_FREEZE") {
-        let genName = pendingLoginEmail.split('@')[0];
-        genName = genName.charAt(0).toUpperCase() + genName.slice(1);
-        error = null; data = [{ name: genName, email: pendingLoginEmail, role: 'citizen', points: 150, reported: 0, volunteered: 0 }];
+        hideLoader(); return alert("Database is taking too long to respond. Please verify your connection.");
     } else if(error) { hideLoader(); return alert("Database Error: " + error.message); }
     
-    if(!data || data.length === 0) { hideLoader(); return showToast("Email not found! Please register.", "warning", "⚠️"); }
+    if(!data || data.length === 0) { hideLoader(); return showToast("Email not found! Please register first.", "warning", "⚠️"); }
 
     realGeneratedOTP = Math.floor(1000 + Math.random() * 9000).toString();
     console.log("🔐 YOUR LOGIN OTP IS:", realGeneratedOTP);
@@ -476,19 +482,13 @@ async function verifyCitizenOTP() {
 
   showLoader();
   try {
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2000));
-    let {data, error} = await Promise.race([supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail), timeoutPromise]);
+    let {data, error} = await supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail);
 
-    if (error && error.message === "TIMEOUT_FREEZE") {
-        let genName = pendingLoginEmail.split('@')[0]; genName = genName.charAt(0).toUpperCase() + genName.slice(1);
-        data = [{ id: "offline-user", name: genName, email: pendingLoginEmail, role: 'citizen', points: 150 }];
-        error = null;
-    }
+    if(error || !data || data.length === 0) throw new Error("Database fetch error.");
 
     currentUser = data[0]; 
     sessionStorage.setItem('civisync_user', JSON.stringify(currentUser)); 
     applyLoginUI(); navigate('track'); showToast('Login Successful!', 'success', '✅');
-
   } catch (err) { hideLoader(); alert("VERIFICATION ERROR: " + err.message); }
 }
 
@@ -501,17 +501,18 @@ async function handleAuth(e, type) {
   let email, password, name;
   
   try {
-      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
-
       if(type === 'citizen_register') { 
         name = document.querySelectorAll('#form-cit-register input')[0].value; 
         email = document.querySelectorAll('#form-cit-register input')[1].value; 
         password = document.querySelectorAll('#form-cit-register input')[2].value;
         
-        let {data: exist} = await Promise.race([supabaseClient.from('app_users').select('email').eq('email', email), timeoutPromise]);
-        if(exist && exist.length > 0) { hideLoader(); return showToast("Email registered!", "warning"); }
+        let {data: exist} = await supabaseClient.from('app_users').select('email').eq('email', email);
+        if(exist && exist.length > 0) { hideLoader(); return showToast("Email already registered!", "warning"); }
         
-        let {data: newUser} = await supabaseClient.from('app_users').insert([{ name, email, password, role: 'citizen', points: 150 }]).select();
+        let {data: newUser, error: insertError} = await supabaseClient.from('app_users').insert([{ name, email, password, role: 'citizen', points: 150 }]).select();
+        
+        if (insertError) { hideLoader(); return alert("Failed to save user. Check DB Policies."); }
+
         currentUser = newUser[0]; 
         await logAudit('REGISTER', 'New citizen account created.');
         hideLoader(); showToast('Account Created!', 'success'); finalizeLogin();
@@ -521,12 +522,7 @@ async function handleAuth(e, type) {
         email = inputs[0].value; password = inputs[1].value; 
         let checkRole = type === 'citizen_pwd' ? 'citizen' : type;
         
-        let {data, error} = await Promise.race([supabaseClient.from('app_users').select('*').eq('email', email).eq('password', password).eq('role', checkRole), timeoutPromise]);
-
-        if (error && error.message === "TIMEOUT_FREEZE") {
-            let genName = email.split('@')[0]; genName = genName.charAt(0).toUpperCase() + genName.slice(1);
-            data = [{ id: "offline-user", name: genName, email: email, role: checkRole, points: 150 }]; error = null;
-        }
+        let {data, error} = await supabaseClient.from('app_users').select('*').eq('email', email).eq('password', password).eq('role', checkRole);
 
         hideLoader();
         if(error || !data || data.length === 0) return showToast("Invalid Credentials", "warning");
@@ -547,10 +543,8 @@ async function requestPasswordReset(e) {
   resetEmailMemory = document.getElementById('forgot-email').value.trim(); showLoader();
 
   try {
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
-    let {data, error} = await Promise.race([supabaseClient.from('app_users').select('name').eq('email', resetEmailMemory), timeoutPromise]);
+    let {data, error} = await supabaseClient.from('app_users').select('name').eq('email', resetEmailMemory);
 
-    if(error && error.message === "TIMEOUT_FREEZE") { let genName = resetEmailMemory.split('@')[0]; data = [{ name: genName }]; error = null; }
     if(error || !data || data.length === 0) { hideLoader(); return showToast("Email not found in our database.", "warning"); }
     
     resetOTPMemory = Math.floor(1000 + Math.random() * 9000).toString();
@@ -566,9 +560,8 @@ async function verifyResetOTP(e) {
   showLoader();
   try {
     const newPwd = document.getElementById('forgot-new-pwd').value;
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 2500));
-    let { error } = await Promise.race([supabaseClient.from('app_users').update({ password: newPwd }).eq('email', resetEmailMemory), timeoutPromise]);
-    if(error && error.message !== "TIMEOUT_FREEZE") { hideLoader(); return alert("Failed to reset password: " + error.message); }
+    let { error } = await supabaseClient.from('app_users').update({ password: newPwd }).eq('email', resetEmailMemory);
+    if(error) { hideLoader(); return alert("Failed to reset password: " + error.message); }
     hideLoader(); showToast("Password Reset Successful! You can now log in.", "success", "✅"); closeForgotModal();
   } catch (err) { hideLoader(); alert("VERIFICATION ERROR: " + err.message); }
 }
@@ -579,13 +572,17 @@ function logout() { sessionStorage.removeItem('civisync_user'); location.reload(
 function applyLoginUI() {
   document.getElementById('btn-auth').classList.add('hidden'); 
   document.getElementById('user-menu-container').classList.remove('hidden');
-  document.getElementById('avatar-initials').innerText = currentUser.name.charAt(0).toUpperCase();
-  document.getElementById('drop-name').innerText = currentUser.name; 
-  document.getElementById('drop-email').innerText = currentUser.email;
+  
+  if (currentUser && currentUser.name) {
+      document.getElementById('avatar-initials').innerText = currentUser.name.charAt(0).toUpperCase();
+      document.getElementById('drop-name').innerText = currentUser.name; 
+      document.getElementById('drop-email').innerText = currentUser.email;
+  }
   document.querySelectorAll('.auth-req').forEach(el => el.classList.remove('hidden'));
 
   if(currentUser.role === 'citizen') { 
-    document.getElementById('user-points').classList.remove('hidden'); document.getElementById('pts-val').innerText = currentUser.points; 
+    document.getElementById('user-points').classList.remove('hidden'); 
+    document.getElementById('pts-val').innerText = currentUser.points || 0; 
     ['nav-admin', 'nav-gov', 'nav-budget', 'nav-superadmin', 'nav-analytics', 'nav-integrations'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
   } else if(currentUser.role === 'admin') { 
     ['nav-points', 'nav-gov', 'nav-leaderboard', 'nav-ngo', 'nav-superadmin', 'user-points'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
@@ -605,7 +602,7 @@ function updateLeaderboard() {
     const elUser = document.getElementById('lb-current-user'); const elIss = document.getElementById('lb-current-issues'); const elPts = document.getElementById('lb-current-points');
     if(elUser) elUser.innerText = currentUser.name + " (You)"; 
     if(elIss) elIss.innerText = (currentUser.reported || 0) + (currentUser.volunteered || 0); 
-    if(elPts) elPts.innerText = currentUser.points;
+    if(elPts) elPts.innerText = currentUser.points || 0;
   }
 }
 
@@ -624,7 +621,9 @@ async function reRenderAllActive() {
 
 async function navigate(viewId) {
   showLoader();
-  const loaderFailsafe = setTimeout(hideLoader, 2500);
+  
+  // Safe UI fallback
+  const loaderFailsafe = setTimeout(hideLoader, 3000);
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const targetView = document.getElementById(`view-${viewId}`); 
@@ -648,13 +647,13 @@ async function navigate(viewId) {
   if(viewId === 'points') await renderPointsHistory();
 
   if(viewId === 'profile' && currentUser) {
-    document.getElementById('prof-name').innerText = currentUser.name; 
-    document.getElementById('prof-email').innerText = currentUser.email; 
-    document.getElementById('prof-avatar').innerText = currentUser.name.charAt(0).toUpperCase(); 
-    document.getElementById('prof-pts').innerText = currentUser.points; 
+    document.getElementById('prof-name').innerText = currentUser.name || "User"; 
+    document.getElementById('prof-email').innerText = currentUser.email || ""; 
+    document.getElementById('prof-avatar').innerText = currentUser.name ? currentUser.name.charAt(0).toUpperCase() : "U"; 
+    document.getElementById('prof-pts').innerText = currentUser.points || 0; 
     document.getElementById('prof-reported').innerText = currentUser.reported || 0; 
     document.getElementById('prof-vol').innerText = currentUser.volunteered || 0; 
-    document.getElementById('prof-role-badge').innerText = currentUser.role.toUpperCase();
+    document.getElementById('prof-role-badge').innerText = currentUser.role ? currentUser.role.toUpperCase() : "CITIZEN";
     document.getElementById('prof-phone').innerText = currentUser.phone || "No phone added";
     document.getElementById('prof-bio').innerText = currentUser.bio || "No bio added yet.";
     if(currentUser.points >= 500) { const bc = document.getElementById('badge-container'); if(bc) bc.classList.remove('hidden'); }
@@ -679,17 +678,24 @@ function checkAuthAndGo(viewId) {
 function nextReportStep(targetStep) {
   document.querySelectorAll('.form-step').forEach(el => el.classList.add('hidden'));
   document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
-  const targetForm = document.getElementById(`form-step-${targetStep}`); targetForm.classList.remove('hidden');
-  document.getElementById(`step-${targetStep}-ind`).classList.add('active');
-  if(typeof gsap !== 'undefined') gsap.fromTo(targetForm, { x: 50, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" });
+  const targetForm = document.getElementById(`form-step-${targetStep}`); 
+  if(targetForm) targetForm.classList.remove('hidden');
+  
+  const stepInd = document.getElementById(`step-${targetStep}-ind`);
+  if(stepInd) stepInd.classList.add('active');
+  
+  if(typeof gsap !== 'undefined' && targetForm) gsap.fromTo(targetForm, { x: 50, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" });
 }
 
 function getLocationWithAnim() {
-  const btn = document.getElementById('btn-gps'); btn.innerHTML = "⏳ Scanning...";
+  const btn = document.getElementById('btn-gps'); 
+  if(!btn) return;
+  btn.innerHTML = "⏳ Scanning...";
   if(typeof gsap !== 'undefined') gsap.to(btn, { scale: 0.95, duration: 0.3, yoyo: true, repeat: -1 });
   if(navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => { 
-      document.getElementById('repLoc').value = `Lat: ${pos.coords.latitude.toFixed(4)} | Lng: ${pos.coords.longitude.toFixed(4)}`; 
+      const locInput = document.getElementById('repLoc');
+      if(locInput) locInput.value = `Lat: ${pos.coords.latitude.toFixed(4)} | Lng: ${pos.coords.longitude.toFixed(4)}`; 
       if(typeof gsap !== 'undefined') gsap.killTweensOf(btn);
       btn.style.transform = "scale(1)"; btn.innerHTML = "✅ Locked"; btn.style.background = "var(--success)"; btn.style.borderColor = "var(--success)";
     }, () => { if(typeof gsap !== 'undefined') gsap.killTweensOf(btn); btn.innerHTML = "❌ Failed"; }); 
@@ -707,7 +713,8 @@ function handleImageUpload(e) {
         const scaleSize = 600 / img.width; canvas.width = 600; canvas.height = img.height * scaleSize;
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         currentFileBase64 = canvas.toDataURL('image/jpeg', 0.5);
-        document.getElementById('uploadStatus').innerText="✓ Image compressed and ready";
+        const uploadStatus = document.getElementById('uploadStatus');
+        if(uploadStatus) uploadStatus.innerText="✓ Image compressed and ready";
       }
       img.src = event.target.result;
     }
@@ -719,8 +726,15 @@ function startDictation() {
   if(window.webkitSpeechRecognition) {
     const rec = new window.webkitSpeechRecognition(); rec.start(); 
     const b = document.getElementById('btnMic'); if(b) b.classList.add('recording');
-    rec.onresult = e => { document.getElementById('repDesc').value += e.results[0][0].transcript; triggerAICategorization(); if(b) b.classList.remove('recording'); };
+    rec.onresult = e => { 
+        const descEl = document.getElementById('repDesc');
+        if(descEl) descEl.value += e.results[0][0].transcript; 
+        triggerAICategorization(); 
+        if(b) b.classList.remove('recording'); 
+    };
     rec.onerror = () => { alert("Speech recognition failed."); if(b) b.classList.remove('recording'); };
+  } else {
+    alert("Voice dictation is not supported in this browser.");
   }
 }
 
@@ -738,7 +752,9 @@ function triggerAICategorization() {
 async function submitReport(e) {
   e.preventDefault(); if(!supabaseClient) return alert("Database not connected.");
   showLoader();
-  const cat = document.getElementById('repCat').value; const desc = document.getElementById('repDesc').value.toLowerCase();
+  const cat = document.getElementById('repCat').value; 
+  const descEl = document.getElementById('repDesc');
+  const desc = descEl ? descEl.value.toLowerCase() : "";
   const routing = {'Pothole':'Public Works', 'Water Leak':'Water Department', 'Electrical':'Electrical', 'Garbage':'Sanitation', 'Drainage':'Public Works', 'Traffic':'Traffic'};
   let calcPrio = 'medium';
   if(cat === 'Drainage' || desc.includes('school') || desc.includes('critical') || desc.includes('danger')) calcPrio = 'high'; 
@@ -746,7 +762,7 @@ async function submitReport(e) {
 
   const newId = `ISS00${Math.floor(Math.random()*900)+100}`;
   const issue = { 
-    id: newId, title: document.getElementById('repTitle').value, category: cat, desc: document.getElementById('repDesc').value, location: document.getElementById('repLoc').value, priority: calcPrio, status: 'pending', created: new Date().toISOString(), daysPending: 0, escalationLevel: 0, upvotes: 0, dept: routing[cat] || 'General', img: currentFileBase64, lat: 31.63 + (Math.random()*0.02 - 0.01), lng: 74.87 + (Math.random()*0.02 - 0.01), budget: 'Pending Budget Constraint', tempAction: '', volunteers: 0, schedule: 'Awaiting Assessment', timeline: [{title: 'Complaint Submitted', date: new Date().toISOString(), type:'active'}], comments: [] // NEW: Added empty comments array
+    id: newId, title: document.getElementById('repTitle').value, category: cat, desc: document.getElementById('repDesc').value, location: document.getElementById('repLoc').value, priority: calcPrio, status: 'pending', created: new Date().toISOString(), daysPending: 0, escalationLevel: 0, upvotes: 0, dept: routing[cat] || 'General', img: currentFileBase64, lat: 31.63 + (Math.random()*0.02 - 0.01), lng: 74.87 + (Math.random()*0.02 - 0.01), budget: 'Pending Budget Constraint', tempAction: '', volunteers: 0, schedule: 'Awaiting Assessment', timeline: [{title: 'Complaint Submitted', date: new Date().toISOString(), type:'active'}], comments: [] 
   };
   
   try {
@@ -886,7 +902,7 @@ async function openModal(id) {
     }).join('');
   }
 
-  // Render NEW Comments feature
+  // Render NEW Comments feature safely
   renderComments(iss);
 
   const citArea = document.getElementById('cit-action-area'); const btnEsc = document.getElementById('btn-escalate'); const btnRti = document.getElementById('btn-rti');
@@ -911,7 +927,7 @@ async function openModal(id) {
 
 function closeModal() { const mOverlay = document.getElementById('modal'); if(mOverlay) mOverlay.classList.remove('open'); activeModalIssueId = null; }
 
-/* --- NEW: NATIVE SHARE API --- */
+/* --- NATIVE SHARE API --- */
 async function shareIssue() {
   if (!activeModalIssueId) return;
   const url = window.location.href; 
@@ -928,7 +944,7 @@ async function shareIssue() {
   }
 }
 
-/* --- NEW: COMMENTS ENGINE --- */
+/* --- COMMENTS ENGINE --- */
 function renderComments(issue) {
   const list = document.getElementById('mod-comments-list');
   if(!list) return;
@@ -952,14 +968,15 @@ async function postComment() {
   if(!activeModalIssueId) return;
   
   const input = document.getElementById('new-comment-input');
+  if(!input) return;
   const text = input.value.trim();
   if(!text) return;
 
   const list = document.getElementById('mod-comments-list');
+  if(!list) return;
   const placeholder = document.querySelector('.comments-list p.text-muted');
   if(placeholder) placeholder.remove();
 
-  // Optimistic UI update for instant feedback
   const now = new Date();
   const newComment = { name: currentUser.name, email: currentUser.email, text: text, time: now.toISOString() };
   
@@ -973,7 +990,6 @@ async function postComment() {
   input.value = '';
   list.scrollTop = list.scrollHeight;
 
-  // Background DB sync
   if(supabaseClient) {
       let db = await getDB();
       let iss = db.find(i => i.id === activeModalIssueId);
@@ -995,12 +1011,12 @@ async function submitNGOForm(e) {
   e.preventDefault(); closeNGOForm(); showToast(`Sending Proposal to Municipal Authority...`, 'primary', '⏳'); showLoader();
   setTimeout(async () => {
     let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId); 
-    await updateDB(activeModalIssueId, { volunteers: iss.volunteers + 5 });
+    if(iss) await updateDB(activeModalIssueId, { volunteers: (iss.volunteers || 0) + 5 });
     await updateUserStats(50, 0, 1, `Adopted Issue ${activeModalIssueId}`);
     await logAudit('NGO_PLEDGE', `Pledged support for Issue ${activeModalIssueId}.`);
     dispatchEmail(currentUser.email, currentUser.name, "NGO Proposal Sent", `Your proposal to adopt Issue ${activeModalIssueId} has been sent. You earned 50 Points!`);
     hideLoader(); showToast(`Success! Proposal Email delivered to Authorities.`, 'success', '📧');
-    const volEl = document.getElementById('mod-vol-count'); if(volEl) volEl.innerText = iss.volunteers + 5;
+    const volEl = document.getElementById('mod-vol-count'); if(volEl && iss) volEl.innerText = (iss.volunteers || 0) + 5;
     await reRenderAllActive();
   }, 2000);
 }
@@ -1008,17 +1024,18 @@ async function submitNGOForm(e) {
 async function upvoteIssue() {
   if(!currentUser || currentUser.role !== 'citizen') return showToast("Citizen login required.", "warning", "🔒");
   let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
-  await updateDB(activeModalIssueId, { upvotes: iss.upvotes + 1 });
+  if(iss) await updateDB(activeModalIssueId, { upvotes: (iss.upvotes || 0) + 1 });
   await logAudit('UPVOTE', `Upvoted Issue ${activeModalIssueId}.`);
-  const upv = document.getElementById('mod-upv-cnt'); if(upv) upv.innerText = iss.upvotes + 1; 
+  const upv = document.getElementById('mod-upv-cnt'); if(upv && iss) upv.innerText = (iss.upvotes || 0) + 1; 
   showToast("Upvote recorded!", "success", "⬆️");
   await runAutoEscalationEngine(); await reRenderAllActive();
 }
 
 async function manualEscalate() {
   showLoader(); let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
-  let newTimeline = [...iss.timeline, {title: 'Citizen Triggered Manual Escalation', date: new Date().toISOString(), type:'escalated'}];
-  await updateDB(activeModalIssueId, { timeline: newTimeline, escalationLevel: Math.max(iss.escalationLevel, 1) });
+  if(!iss) return hideLoader();
+  let newTimeline = iss.timeline ? [...iss.timeline, {title: 'Citizen Triggered Manual Escalation', date: new Date().toISOString(), type:'escalated'}] : [];
+  await updateDB(activeModalIssueId, { timeline: newTimeline, escalationLevel: Math.max(iss.escalationLevel || 0, 1) });
   await logAudit('ESCALATE_MANUAL', `Manually escalated Issue ${activeModalIssueId}.`);
   dispatchEmail(currentUser.email, currentUser.name, "Escalation Request Received", `Your request to escalate Issue ${activeModalIssueId} has been sent to the Ward Officer.`);
   hideLoader(); showToast('Escalation Request emailed to Ward Officer.', 'success', '📧');
@@ -1027,9 +1044,11 @@ async function manualEscalate() {
 
 async function adminSaveStatus() {
   showLoader(); const sStat = document.getElementById('admin-sel-stat'); const sBud = document.getElementById('admin-sel-budget');
-  if(!sStat) return; const s = sStat.value; const b = sBud ? sBud.value : 'Funded';
+  if(!sStat) { hideLoader(); return; }
+  const s = sStat.value; const b = sBud ? sBud.value : 'Funded';
   let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
-  let newTimeline = [...iss.timeline, {title: `Status updated to: ${s.toUpperCase()}`, date: new Date().toISOString(), type:'active'}];
+  if(!iss) return hideLoader();
+  let newTimeline = iss.timeline ? [...iss.timeline, {title: `Status updated to: ${s.toUpperCase()}`, date: new Date().toISOString(), type:'active'}] : [];
   await updateDB(activeModalIssueId, { status: s, budget: b, timeline: newTimeline });
   await logAudit('STATUS_CHANGE', `Changed Issue ${activeModalIssueId} status to ${s}.`);
   hideLoader(); showToast(`Updates successfully saved. Notifications dispatched.`, 'success', '✅');
@@ -1048,6 +1067,7 @@ function generatePDFReport() {
 
 async function generateDigitalNotice(id) {
   const db = await getDB(); const iss = db.find(i => i.id === id);
+  if(!iss) return;
   document.getElementById('notice-date').innerText = new Date().toLocaleDateString(); document.getElementById('notice-dept').innerText = iss.dept; document.getElementById('notice-id').innerText = iss.id; document.getElementById('notice-title').innerText = iss.title;
   const el = document.getElementById('notice-pdf-content'); if(!el) return;
   el.classList.remove('hidden'); html2pdf().set({filename: `Showcause_${id}.pdf`}).from(el).save().then(() => { el.classList.add('hidden'); showToast('PDF Notice generated and emailed to department.', 'success', '📧'); });
@@ -1055,28 +1075,29 @@ async function generateDigitalNotice(id) {
 
 async function generateRTIDraft() {
   const db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
+  if(!iss) return;
   document.getElementById('rti-date').innerText = new Date().toLocaleDateString(); document.getElementById('rti-id').innerText = iss.id; document.getElementById('rti-title').innerText = iss.title;
   const el = document.getElementById('rti-pdf-content'); if(!el) return;
   el.classList.remove('hidden'); html2pdf().set({filename: `RTI_Draft_${iss.id}.pdf`}).from(el).save().then(() => el.classList.add('hidden'));
 }
 
 async function renderAdmin() {
-  const db = await getDB(); const total = db.length; const pending = db.filter(i=>i.status==='pending').length; const delayed = db.filter(i=>i.budget.includes('Pending') && i.status !== 'resolved').length; const resolved = db.filter(i=>i.status==='resolved').length;
+  const db = await getDB(); const total = db.length; const pending = db.filter(i=>i.status==='pending').length; const delayed = db.filter(i=>i.budget && i.budget.includes('Pending') && i.status !== 'resolved').length; const resolved = db.filter(i=>i.status==='resolved').length;
   const topStats = document.getElementById('admin-stats-top');
   if(topStats) topStats.innerHTML = `<div class="admin-stat-card"><p class="text-xs text-muted">Total Issues</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1;">${total}</h2><div class="icon-circle" style="background:var(--primary-light); color:var(--primary); width:30px; height:30px; font-size:0.9rem;">i</div></div></div><div class="admin-stat-card"><p class="text-xs text-muted">Pending Fixes</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1;">${pending}</h2><div class="icon-circle" style="background:var(--warning-bg); color:var(--warning); width:30px; height:30px; font-size:0.9rem;">🕒</div></div></div><div class="admin-stat-card"><p class="text-xs text-muted">Budget Delayed</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1; color:var(--danger);">${delayed}</h2><div class="icon-circle" style="background:var(--danger-bg); color:var(--danger); width:30px; height:30px; font-size:0.9rem;">⚠️</div></div></div><div class="admin-stat-card"><p class="text-xs text-muted">Resolved</p><div style="display:flex; justify-content:space-between; align-items:flex-end;"><h2 style="font-size:2.5rem; line-height:1;">${resolved}</h2><div class="icon-circle" style="background:var(--success-bg); color:var(--success); width:30px; height:30px; font-size:0.9rem;">✅</div></div></div>`;
   const hpList = db.filter(i => i.priority === 'high' && i.status !== 'resolved'); 
   const hpBdg = document.getElementById('hp-count-badge'); if(hpBdg) hpBdg.innerText = `${hpList.length} Active`;
   const aHpList = document.getElementById('admin-hp-list');
-  if(aHpList) aHpList.innerHTML = hpList.map(i => `<div class="hp-issue-item" onclick="openModal('${i.id}')"><div><div class="font-semibold text-sm text-primary"><span style="color:var(--danger); margin-right:0.5rem;">!</span>${i.title}</div><div class="text-xs text-muted mt-1" style="margin-left: 1.2rem;">${i.budget.includes('Pending') ? '⚠️ Budget Hold' : '📍 ' + i.location}</div></div>${getBadgeHTML('status', i.status)}</div>`).join('');
+  if(aHpList) aHpList.innerHTML = hpList.map(i => `<div class="hp-issue-item" onclick="openModal('${i.id}')"><div><div class="font-semibold text-sm text-primary"><span style="color:var(--danger); margin-right:0.5rem;">!</span>${i.title}</div><div class="text-xs text-muted mt-1" style="margin-left: 1.2rem;">${i.budget && i.budget.includes('Pending') ? '⚠️ Budget Hold' : '📍 ' + i.location}</div></div>${getBadgeHTML('status', i.status)}</div>`).join('');
   
   const admProg = document.getElementById('admin-dept-progress');
   if(admProg) admProg.innerHTML = ['Public Works', 'Water Department', 'Electrical', 'Sanitation', 'Traffic'].map(d => { const t = db.filter(i => i.dept === d).length; const r = db.filter(i => i.dept === d && i.status === 'resolved').length; const p = t === 0 ? 0 : (r/t)*100; return `<div class="progress-wrapper"><div class="progress-info"><span>${d}</span><span>${r}/${t} resolved</span></div><div class="progress-track"><div class="progress-bar" style="width:${p}%;"></div></div></div>`; }).join('');
   
   const admTab = document.getElementById('admin-table-body');
-  if(admTab) admTab.innerHTML = db.map(i => `<tr><td><span class="table-id">${i.id}</span></td><td class="font-medium">${i.title}</td><td>${i.budget.includes('Pending') ? `<span style="color:var(--danger); font-weight:600;">${i.budget}</span>` : i.budget}</td><td>${getBadgeHTML('status', i.status)}</td><td><button type="button" class="btn btn-outline text-xs" style="position:relative; z-index:20; cursor:pointer;" onclick="openModal('${i.id}'); event.stopPropagation();">View / Manage</button></td></tr>`).join('');
+  if(admTab) admTab.innerHTML = db.map(i => `<tr><td><span class="table-id">${i.id}</span></td><td class="font-medium">${i.title}</td><td>${i.budget && i.budget.includes('Pending') ? `<span style="color:var(--danger); font-weight:600;">${i.budget}</span>` : (i.budget || 'Funded')}</td><td>${getBadgeHTML('status', i.status)}</td><td><button type="button" class="btn btn-outline text-xs" style="position:relative; z-index:20; cursor:pointer;" onclick="openModal('${i.id}'); event.stopPropagation();">View / Manage</button></td></tr>`).join('');
 }
 
-/* --- NEW: ADMIN HEATMAP INITIALIZER --- */
+/* --- ADMIN HEATMAP INITIALIZER --- */
 async function initAdminHeatmap() {
   const mapEl = document.getElementById('admin-heatmap');
   if(!mapEl) return;
@@ -1124,7 +1145,6 @@ async function renderAnalytics() {
     charts.trend = new Chart(chTrend, { type: 'line', data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [{ label: 'Issues Resolved', data: [12, 19, 15, 25, 22, 30, res], borderColor: '#10b981', tension: 0.4, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.1)' }] }, options: { responsive: true, maintainAspectRatio: false } });
   }
 
-  // Fire Heatmap initializations
   await initAdminHeatmap();
 }
 
@@ -1150,7 +1170,7 @@ async function redeemReward(cost, rewardName) {
 }
 
 async function renderNgo() {
-  let db = await getDB(); const unfunded = db.filter(i => i.budget.includes('Pending') && i.status !== 'resolved'); 
+  let db = await getDB(); const unfunded = db.filter(i => i.budget && i.budget.includes('Pending') && i.status !== 'resolved'); 
   const cont = document.getElementById('ngo-issue-list'); if(!cont) return;
   if(unfunded.length === 0) { cont.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align:center;">No unfunded issues right now!</p>'; return; }
   cont.innerHTML = unfunded.map(i => `
@@ -1165,7 +1185,7 @@ async function renderNgo() {
 }
 
 async function renderBudget() {
-  let db = await getDB(); const pending = db.filter(i => i.budget.includes('Pending') && i.status !== 'resolved'); 
+  let db = await getDB(); const pending = db.filter(i => i.budget && i.budget.includes('Pending') && i.status !== 'resolved'); 
   const tbody = document.getElementById('budget-approval-table'); if(!tbody) return;
   if(pending.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">All issues funded.</td></tr>'; return; }
   tbody.innerHTML = pending.map(i => `<tr><td><span class="table-id">${i.id}</span></td><td><div class="font-medium">${i.title}</div><div class="text-xs text-muted">📍 ${i.location}</div></td><td><span class="badge badge-outline">${i.dept}</span></td><td class="font-medium" style="color:var(--danger);">₹${i.priority === 'high' ? '75,000' : '25,000'}</td><td><button type="button" class="btn btn-success text-xs" style="border-radius:50px;" onclick="allocateFunds('${i.id}')">Approve Funds</button></td></tr>`).join('');
@@ -1173,7 +1193,8 @@ async function renderBudget() {
 
 async function allocateFunds(id) {
   showLoader(); let db = await getDB(); const iss = db.find(i => i.id === id);
-  let newTimeline = [...iss.timeline, {title: 'Funds Approved', date: new Date().toISOString(), type:'active'}];
+  if(!iss) return hideLoader();
+  let newTimeline = iss.timeline ? [...iss.timeline, {title: 'Funds Approved', date: new Date().toISOString(), type:'active'}] : [];
   await updateDB(id, { budget: 'Funded', status: 'in progress', timeline: newTimeline });
   await logAudit('FUNDS_ALLOCATED', `Approved budget for Issue ${id}.`);
   hideLoader(); showToast(`Funding approved!`, 'success', '💰'); await reRenderAllActive();
@@ -1208,11 +1229,14 @@ async function renderTransparency() {
 async function renderSuperAdmin() {
   const uTbody = document.getElementById('sa-users-table'); const logDiv = document.getElementById('sa-audit-logs');
   if(!uTbody || !logDiv || !supabaseClient) return;
-  const { data: users } = await supabaseClient.from('app_users').select('*').order('created_at', {ascending: false});
-  const { data: logs } = await supabaseClient.from('audit_logs').select('*').order('created_at', {ascending: false});
-  if(users) uTbody.innerHTML = users.map(u => `<tr style="border-bottom: 1px solid var(--border);"><td style="padding:10px;">${u.name}</td><td style="padding:10px;">${u.email}</td><td style="padding:10px;"><span class="badge badge-outline">${u.role}</span></td><td style="padding:10px; font-weight:bold;">${u.points}</td></tr>`).join('');
-  if(logs) {
-    if(logs.length === 0) logDiv.innerHTML = '<p style="color:#94a3b8;">No audit logs yet.</p>';
-    else logDiv.innerHTML = logs.map(l => `<div style="background: rgba(255,255,255,0.05); padding: 1rem; border-left: 4px solid #10b981; border-radius: 4px; margin-bottom: 0.8rem;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><strong style="color:#10b981;">[${l.action}]</strong><span style="font-size:0.75rem; color:#94a3b8;">${new Date(l.created_at).toLocaleString()}</span></div><div style="font-size:0.85rem;">User: <strong>${l.user_email}</strong> (${l.role})</div><div style="font-size:0.85rem; color:#cbd5e1; margin-top:5px;">${l.details}</div></div>`).join('');
-  }
+  
+  try {
+      const { data: users } = await supabaseClient.from('app_users').select('*').order('created_at', {ascending: false});
+      const { data: logs } = await supabaseClient.from('audit_logs').select('*').order('created_at', {ascending: false});
+      if(users) uTbody.innerHTML = users.map(u => `<tr style="border-bottom: 1px solid var(--border);"><td style="padding:10px;">${u.name}</td><td style="padding:10px;">${u.email}</td><td style="padding:10px;"><span class="badge badge-outline">${u.role}</span></td><td style="padding:10px; font-weight:bold;">${u.points}</td></tr>`).join('');
+      if(logs) {
+        if(logs.length === 0) logDiv.innerHTML = '<p style="color:#94a3b8;">No audit logs yet.</p>';
+        else logDiv.innerHTML = logs.map(l => `<div style="background: rgba(255,255,255,0.05); padding: 1rem; border-left: 4px solid #10b981; border-radius: 4px; margin-bottom: 0.8rem;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><strong style="color:#10b981;">[${l.action}]</strong><span style="font-size:0.75rem; color:#94a3b8;">${new Date(l.created_at).toLocaleString()}</span></div><div style="font-size:0.85rem;">User: <strong>${l.user_email}</strong> (${l.role})</div><div style="font-size:0.85rem; color:#cbd5e1; margin-top:5px;">${l.details}</div></div>`).join('');
+      }
+  } catch(e) { console.error("SuperAdmin Fetch Error", e); }
 }
