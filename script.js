@@ -5,7 +5,8 @@ let supabaseClient = null;
 
 try {
   const { createClient } = supabase;
-  const supabaseUrl = 'https://nsyoivdrcydlfcvipzfy.supabase.co'; 
+  // const supabaseUrl = 'https://nsyoivdrcydlfcvipzfy.supabase.co'; 
+  const supabaseUrl = window.location.origin + '/supabase-api';
   const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9pdmRyY3lkbGZjdmlwemZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2ODk0MTQsImV4cCI6MjA4NzI2NTQxNH0.cjoVyfucX3nu0BjBreN2FapxL9h0_dISr6KSat4TNZY"; 
   supabaseClient = createClient(supabaseUrl, supabaseKey);
 } catch (error) { 
@@ -1270,3 +1271,4 @@ async function renderSuperAdmin() {
       }
   } catch(e) { console.error("SuperAdmin Fetch Error", e); }
 }
+
