@@ -110,7 +110,7 @@ if (supabaseClient) {
 
       try {
           // Generous 10-second timeout for cold DB starts
-          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 10000));
+          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 30000));
           let { data, error } = await Promise.race([
               supabaseClient.from('app_users').select('*').eq('email', email),
               timeoutPromise
@@ -284,7 +284,7 @@ async function getDB() {
   if(!supabaseClient) return []; 
   try {
       // 10 Second timeout ensures slow networks don't break the app, but prevents infinite loading
-      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 10000));
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 30000));
       let { data, error } = await Promise.race([
           supabaseClient.from('issues').select('*').order('created', { ascending: false }),
           timeoutPromise
