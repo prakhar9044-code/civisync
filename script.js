@@ -1,4 +1,4 @@
-/* ==========================================================================
+ /* ==========================================================================
    1. CRASH-PROOF API INITIALIZATIONS
    ========================================================================== */
 let supabaseClient = null;
@@ -128,15 +128,15 @@ if (supabaseClient) {
       } catch(err) {
           console.error("OAuth DB Fetch Error:", err);
           currentUser = { name: name, email: email, role: 'citizen', points: 150 };
+      } finally {
+          sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
+          window.history.replaceState(null, null, window.location.pathname); 
+          
+          applyLoginUI();
+          navigate(currentUser.role === 'citizen' ? 'track' : 'admin');
+          showToast(`Welcome via Social Login, ${currentUser.name}!`, 'success', '✅');
+          hideLoader();
       }
-
-      sessionStorage.setItem('civisync_user', JSON.stringify(currentUser));
-      window.history.replaceState(null, null, window.location.pathname); // Clears Vercel/Supabase tokens from URL
-      
-      applyLoginUI();
-      navigate(currentUser.role === 'citizen' ? 'track' : 'admin');
-      showToast(`Welcome via Social Login, ${currentUser.name}!`, 'success', '✅');
-      hideLoader();
     }
   });
 }
@@ -342,7 +342,6 @@ async function saveSettingsToDB() {
   
   try {
       const { error } = await supabaseClient.from('app_users').update({ phone: phone, bio: bio }).eq('id', currentUser.id);
-      hideLoader();
       
       if(error) {
         showToast("Failed to sync data. Please check connection.", "danger");
@@ -352,7 +351,9 @@ async function saveSettingsToDB() {
         showToast("Profile Synced to Database!", "success", "✅");
       }
   } catch(err) {
-      hideLoader(); showToast("Network Error", "danger");
+      showToast("Network Error", "danger");
+  } finally {
+      hideLoader();
   }
 }
 
@@ -391,7 +392,7 @@ async function runAutoEscalationEngine() {
 }
 
 /* ==========================================================================
-   10. AUTHENTICATION & OAUTH
+   10. AUTHENTICATION & OAUTH (NOW WITH CRASH PROOFING)
    ========================================================================== */
 function togglePassword(inputId) {
   const input = document.getElementById(inputId);
@@ -430,18 +431,26 @@ async function socialLogin(provider) {
   try {
     const { data, error } = await supabaseClient.auth.signInWithOAuth({ 
       provider: provider, 
-      options: { redirectTo: window.location.origin } 
+      options: { 
+        redirectTo: window.location.origin 
+      } 
     });
     
+    // If Supabase rejects the redirect (e.g., provider not enabled)
     if(error) { 
-        hideLoader(); 
-        alert("OAuth Error: Ensure you are NOT running this inside a VS Code preview iframe."); 
+        hideLoader();
+        alert(`Supabase Error: ${error.message}`); 
+        return;
     }
+    
+    // Note: We deliberately DO NOT call hideLoader() here if successful, 
+    // because the browser needs a moment to physically navigate to the LinkedIn/Google page.
+    
   } catch (err) {
-    hideLoader(); alert("Social Login Failed: " + err.message);
+    hideLoader();
+    alert("Execution Error: " + err.message);
   }
 }
-
 /* --- LOGIN OTP --- */
 async function handleCitizenOTPFlow(e) {
   e.preventDefault(); 
@@ -450,30 +459,30 @@ async function handleCitizenOTPFlow(e) {
 
   showLoader();
   try {
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 10000));
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ error: { message: "TIMEOUT_FREEZE" } }), 30000));
     let {data, error} = await Promise.race([
         supabaseClient.from('app_users').select('*').eq('email', pendingLoginEmail).eq('role', 'citizen'),
         timeoutPromise
     ]);
     
     if (error && error.message === "TIMEOUT_FREEZE") {
-        hideLoader(); return alert("Database is taking too long to respond. Please verify your connection.");
-    } else if(error) { hideLoader(); return alert("Database Error: " + error.message); }
+        return alert("Database is taking too long to respond. Please verify your connection.");
+    } else if(error) { return alert("Database Error: " + error.message); }
     
-    if(!data || data.length === 0) { hideLoader(); return showToast("Email not found! Please register first.", "warning", "⚠️"); }
+    if(!data || data.length === 0) { return showToast("Email not found! Please register first.", "warning", "⚠️"); }
 
     realGeneratedOTP = Math.floor(1000 + Math.random() * 9000).toString();
     console.log("🔐 YOUR LOGIN OTP IS:", realGeneratedOTP);
 
     document.getElementById('cit-login-step-1').classList.add('hidden'); 
     document.getElementById('cit-login-step-2').classList.remove('hidden');
-    hideLoader();
 
     emailjs.send("service_0952wxc", "template_tes0o8g", { to_email: pendingLoginEmail, name: data[0].name, user_name: data[0].name, action_title: "Secure Login OTP", action_details: `Your Login OTP is: ${realGeneratedOTP}` }).then(() => {
       showToast(`OTP sent to your email!`, 'success', '📧'); 
     }).catch(() => { alert(`Email failed to send.\nYour OTP is: ${realGeneratedOTP}`); });
 
-  } catch (err) { hideLoader(); alert("CRITICAL ERROR: " + err.message); }
+  } catch (err) { alert("CRITICAL ERROR: " + err.message); }
+  finally { hideLoader(); }
 }
 
 async function verifyCitizenOTP() {
@@ -489,7 +498,8 @@ async function verifyCitizenOTP() {
     currentUser = data[0]; 
     sessionStorage.setItem('civisync_user', JSON.stringify(currentUser)); 
     applyLoginUI(); navigate('track'); showToast('Login Successful!', 'success', '✅');
-  } catch (err) { hideLoader(); alert("VERIFICATION ERROR: " + err.message); }
+  } catch (err) { alert("VERIFICATION ERROR: " + err.message); }
+  finally { hideLoader(); }
 }
 
 function reEnterEmail() { document.getElementById('cit-login-step-2').classList.add('hidden'); document.getElementById('cit-login-step-1').classList.remove('hidden'); }
@@ -507,15 +517,15 @@ async function handleAuth(e, type) {
         password = document.querySelectorAll('#form-cit-register input')[2].value;
         
         let {data: exist} = await supabaseClient.from('app_users').select('email').eq('email', email);
-        if(exist && exist.length > 0) { hideLoader(); return showToast("Email already registered!", "warning"); }
+        if(exist && exist.length > 0) { return showToast("Email already registered!", "warning"); }
         
         let {data: newUser, error: insertError} = await supabaseClient.from('app_users').insert([{ name, email, password, role: 'citizen', points: 150 }]).select();
         
-        if (insertError) { hideLoader(); return alert("Failed to save user. Check DB Policies."); }
+        if (insertError) { return alert("Failed to save user. Check DB Policies."); }
 
         currentUser = newUser[0]; 
         await logAudit('REGISTER', 'New citizen account created.');
-        hideLoader(); showToast('Account Created!', 'success'); finalizeLogin();
+        showToast('Account Created!', 'success'); finalizeLogin();
       } else {
         let formId = type === 'citizen_pwd' ? 'form-cit-login' : `form-${type}`;
         let inputs = document.getElementById(formId).querySelectorAll('input');
@@ -524,14 +534,14 @@ async function handleAuth(e, type) {
         
         let {data, error} = await supabaseClient.from('app_users').select('*').eq('email', email).eq('password', password).eq('role', checkRole);
 
-        hideLoader();
         if(error || !data || data.length === 0) return showToast("Invalid Credentials", "warning");
         
         currentUser = data[0]; 
         await logAudit('LOGIN', `User logged in as ${checkRole}.`);
         showToast(`Logged in securely`, 'success'); finalizeLogin();
       }
-  } catch (err) { hideLoader(); alert("AUTH ERROR: " + err.message); }
+  } catch (err) { alert("AUTH ERROR: " + err.message); }
+  finally { hideLoader(); }
 }
 
 /* --- FORGOT PASSWORD --- */
@@ -545,13 +555,14 @@ async function requestPasswordReset(e) {
   try {
     let {data, error} = await supabaseClient.from('app_users').select('name').eq('email', resetEmailMemory);
 
-    if(error || !data || data.length === 0) { hideLoader(); return showToast("Email not found in our database.", "warning"); }
+    if(error || !data || data.length === 0) { return showToast("Email not found in our database.", "warning"); }
     
     resetOTPMemory = Math.floor(1000 + Math.random() * 9000).toString();
-    document.getElementById('forgot-step-1').classList.add('hidden'); document.getElementById('forgot-step-2').classList.remove('hidden'); hideLoader();
+    document.getElementById('forgot-step-1').classList.add('hidden'); document.getElementById('forgot-step-2').classList.remove('hidden');
 
     emailjs.send("service_0952wxc", "template_tes0o8g", { to_email: resetEmailMemory, name: data[0].name, user_name: data[0].name, action_title: "Password Reset OTP", action_details: `Your reset OTP is: ${resetOTPMemory}` }).then(() => { showToast("Reset OTP sent!", "primary", "📧"); }).catch(() => { alert(`Your Reset OTP is: ${resetOTPMemory}`); });
-  } catch (err) { hideLoader(); alert("CRITICAL ERROR: " + err.message); }
+  } catch (err) { alert("CRITICAL ERROR: " + err.message); }
+  finally { hideLoader(); }
 }
 
 async function verifyResetOTP(e) {
@@ -561,9 +572,10 @@ async function verifyResetOTP(e) {
   try {
     const newPwd = document.getElementById('forgot-new-pwd').value;
     let { error } = await supabaseClient.from('app_users').update({ password: newPwd }).eq('email', resetEmailMemory);
-    if(error) { hideLoader(); return alert("Failed to reset password: " + error.message); }
-    hideLoader(); showToast("Password Reset Successful! You can now log in.", "success", "✅"); closeForgotModal();
-  } catch (err) { hideLoader(); alert("VERIFICATION ERROR: " + err.message); }
+    if(error) { return alert("Failed to reset password: " + error.message); }
+    showToast("Password Reset Successful! You can now log in.", "success", "✅"); closeForgotModal();
+  } catch (err) { alert("VERIFICATION ERROR: " + err.message); }
+  finally { hideLoader(); }
 }
 
 function finalizeLogin() { sessionStorage.setItem('civisync_user', JSON.stringify(currentUser)); applyLoginUI(); navigate(currentUser.role === 'citizen' ? 'track' : 'admin'); }
@@ -595,7 +607,7 @@ function applyLoginUI() {
 }
 
 /* ==========================================================================
-   11. NAVIGATION ROUTER
+   11. NAVIGATION ROUTER (NOW CRASH PROOF)
    ========================================================================== */
 function updateLeaderboard() {
   if(currentUser) {
@@ -621,8 +633,6 @@ async function reRenderAllActive() {
 
 async function navigate(viewId) {
   showLoader();
-  
-  // Safe UI fallback
   const loaderFailsafe = setTimeout(hideLoader, 3000);
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -633,38 +643,42 @@ async function navigate(viewId) {
   const navLink = document.getElementById(`nav-${viewId}`); 
   if(navLink) navLink.classList.add('active');
 
-  if(viewId === 'landing') { triggerHeroAnimation(); triggerTypewriter(); }
-  if(viewId === 'track') await renderTrack();
-  if(viewId === 'map') await initDedicatedMap();
-  if(viewId === 'gov') await renderGov();
-  if(viewId === 'transparency') await renderTransparency();
-  if(viewId === 'admin') await renderAdmin();
-  if(viewId === 'analytics') await renderAnalytics();
-  if(viewId === 'ngo') await renderNgo();
-  if(viewId === 'budget') await renderBudget();
-  if(viewId === 'superadmin') await renderSuperAdmin();
-  if(viewId === 'leaderboard') updateLeaderboard();
-  if(viewId === 'points') await renderPointsHistory();
+  try {
+      if(viewId === 'landing') { triggerHeroAnimation(); triggerTypewriter(); }
+      if(viewId === 'track') await renderTrack();
+      if(viewId === 'map') await initDedicatedMap();
+      if(viewId === 'gov') await renderGov();
+      if(viewId === 'transparency') await renderTransparency();
+      if(viewId === 'admin') await renderAdmin();
+      if(viewId === 'analytics') await renderAnalytics();
+      if(viewId === 'ngo') await renderNgo();
+      if(viewId === 'budget') await renderBudget();
+      if(viewId === 'superadmin') await renderSuperAdmin();
+      if(viewId === 'leaderboard') updateLeaderboard();
+      if(viewId === 'points') await renderPointsHistory();
 
-  if(viewId === 'profile' && currentUser) {
-    document.getElementById('prof-name').innerText = currentUser.name || "User"; 
-    document.getElementById('prof-email').innerText = currentUser.email || ""; 
-    document.getElementById('prof-avatar').innerText = currentUser.name ? currentUser.name.charAt(0).toUpperCase() : "U"; 
-    document.getElementById('prof-pts').innerText = currentUser.points || 0; 
-    document.getElementById('prof-reported').innerText = currentUser.reported || 0; 
-    document.getElementById('prof-vol').innerText = currentUser.volunteered || 0; 
-    document.getElementById('prof-role-badge').innerText = currentUser.role ? currentUser.role.toUpperCase() : "CITIZEN";
-    document.getElementById('prof-phone').innerText = currentUser.phone || "No phone added";
-    document.getElementById('prof-bio').innerText = currentUser.bio || "No bio added yet.";
-    if(currentUser.points >= 500) { const bc = document.getElementById('badge-container'); if(bc) bc.classList.remove('hidden'); }
+      if(viewId === 'profile' && currentUser) {
+        document.getElementById('prof-name').innerText = currentUser.name || "User"; 
+        document.getElementById('prof-email').innerText = currentUser.email || ""; 
+        document.getElementById('prof-avatar').innerText = currentUser.name ? currentUser.name.charAt(0).toUpperCase() : "U"; 
+        document.getElementById('prof-pts').innerText = currentUser.points || 0; 
+        document.getElementById('prof-reported').innerText = currentUser.reported || 0; 
+        document.getElementById('prof-vol').innerText = currentUser.volunteered || 0; 
+        document.getElementById('prof-role-badge').innerText = currentUser.role ? currentUser.role.toUpperCase() : "CITIZEN";
+        document.getElementById('prof-phone').innerText = currentUser.phone || "No phone added";
+        document.getElementById('prof-bio').innerText = currentUser.bio || "No bio added yet.";
+        if(currentUser.points >= 500) { const bc = document.getElementById('badge-container'); if(bc) bc.classList.remove('hidden'); }
+      }
+      if(viewId === 'settings' && currentUser) {
+        document.getElementById('set-phone').value = currentUser.phone || "";
+        document.getElementById('set-bio').value = currentUser.bio || "";
+      }
+  } catch (error) {
+      console.error("Navigation Error:", error);
+  } finally {
+      window.scrollTo(0,0);
+      setTimeout(() => { initScrollAnimations(); clearTimeout(loaderFailsafe); hideLoader(); }, 500);
   }
-  if(viewId === 'settings' && currentUser) {
-    document.getElementById('set-phone').value = currentUser.phone || "";
-    document.getElementById('set-bio').value = currentUser.bio || "";
-  }
-  
-  window.scrollTo(0,0);
-  setTimeout(() => { initScrollAnimations(); clearTimeout(loaderFailsafe); hideLoader(); }, 500);
 }
 
 function checkAuthAndGo(viewId) { 
@@ -774,9 +788,10 @@ async function submitReport(e) {
     e.target.reset(); currentFileBase64 = 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'; 
     const stat = document.getElementById('uploadStatus'); if(stat) stat.innerText = '';
     
-    hideLoader(); showToast(`Report published! AI Assigned Priority: ${calcPrio.toUpperCase()}`, 'success', '🚀');
+    showToast(`Report published! AI Assigned Priority: ${calcPrio.toUpperCase()}`, 'success', '🚀');
     nextReportStep(1); await runAutoEscalationEngine(); navigate('track');
-  } catch (err) { hideLoader(); console.error(err); showToast('Failed to save report.', 'warning', '⚠️'); }
+  } catch (err) { console.error(err); showToast('Failed to save report.', 'warning', '⚠️'); }
+  finally { hideLoader(); }
 }
 
 /* ==========================================================================
@@ -1032,27 +1047,37 @@ async function upvoteIssue() {
 }
 
 async function manualEscalate() {
-  showLoader(); let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
-  if(!iss) return hideLoader();
-  let newTimeline = iss.timeline ? [...iss.timeline, {title: 'Citizen Triggered Manual Escalation', date: new Date().toISOString(), type:'escalated'}] : [];
-  await updateDB(activeModalIssueId, { timeline: newTimeline, escalationLevel: Math.max(iss.escalationLevel || 0, 1) });
-  await logAudit('ESCALATE_MANUAL', `Manually escalated Issue ${activeModalIssueId}.`);
-  dispatchEmail(currentUser.email, currentUser.name, "Escalation Request Received", `Your request to escalate Issue ${activeModalIssueId} has been sent to the Ward Officer.`);
-  hideLoader(); showToast('Escalation Request emailed to Ward Officer.', 'success', '📧');
-  closeModal(); await runAutoEscalationEngine(); await renderTrack();
+  showLoader(); 
+  try {
+      let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
+      if(!iss) return;
+      let newTimeline = iss.timeline ? [...iss.timeline, {title: 'Citizen Triggered Manual Escalation', date: new Date().toISOString(), type:'escalated'}] : [];
+      await updateDB(activeModalIssueId, { timeline: newTimeline, escalationLevel: Math.max(iss.escalationLevel || 0, 1) });
+      await logAudit('ESCALATE_MANUAL', `Manually escalated Issue ${activeModalIssueId}.`);
+      dispatchEmail(currentUser.email, currentUser.name, "Escalation Request Received", `Your request to escalate Issue ${activeModalIssueId} has been sent to the Ward Officer.`);
+      showToast('Escalation Request emailed to Ward Officer.', 'success', '📧');
+      closeModal(); await runAutoEscalationEngine(); await renderTrack();
+  } finally {
+      hideLoader(); 
+  }
 }
 
 async function adminSaveStatus() {
-  showLoader(); const sStat = document.getElementById('admin-sel-stat'); const sBud = document.getElementById('admin-sel-budget');
-  if(!sStat) { hideLoader(); return; }
-  const s = sStat.value; const b = sBud ? sBud.value : 'Funded';
-  let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
-  if(!iss) return hideLoader();
-  let newTimeline = iss.timeline ? [...iss.timeline, {title: `Status updated to: ${s.toUpperCase()}`, date: new Date().toISOString(), type:'active'}] : [];
-  await updateDB(activeModalIssueId, { status: s, budget: b, timeline: newTimeline });
-  await logAudit('STATUS_CHANGE', `Changed Issue ${activeModalIssueId} status to ${s}.`);
-  hideLoader(); showToast(`Updates successfully saved. Notifications dispatched.`, 'success', '✅');
-  closeModal(); await reRenderAllActive();
+  showLoader(); 
+  try {
+      const sStat = document.getElementById('admin-sel-stat'); const sBud = document.getElementById('admin-sel-budget');
+      if(!sStat) return;
+      const s = sStat.value; const b = sBud ? sBud.value : 'Funded';
+      let db = await getDB(); const iss = db.find(i => i.id === activeModalIssueId);
+      if(!iss) return;
+      let newTimeline = iss.timeline ? [...iss.timeline, {title: `Status updated to: ${s.toUpperCase()}`, date: new Date().toISOString(), type:'active'}] : [];
+      await updateDB(activeModalIssueId, { status: s, budget: b, timeline: newTimeline });
+      await logAudit('STATUS_CHANGE', `Changed Issue ${activeModalIssueId} status to ${s}.`);
+      showToast(`Updates successfully saved. Notifications dispatched.`, 'success', '✅');
+      closeModal(); await reRenderAllActive();
+  } finally {
+      hideLoader();
+  }
 }
 
 /* ==========================================================================
@@ -1192,12 +1217,17 @@ async function renderBudget() {
 }
 
 async function allocateFunds(id) {
-  showLoader(); let db = await getDB(); const iss = db.find(i => i.id === id);
-  if(!iss) return hideLoader();
-  let newTimeline = iss.timeline ? [...iss.timeline, {title: 'Funds Approved', date: new Date().toISOString(), type:'active'}] : [];
-  await updateDB(id, { budget: 'Funded', status: 'in progress', timeline: newTimeline });
-  await logAudit('FUNDS_ALLOCATED', `Approved budget for Issue ${id}.`);
-  hideLoader(); showToast(`Funding approved!`, 'success', '💰'); await reRenderAllActive();
+  showLoader(); 
+  try {
+      let db = await getDB(); const iss = db.find(i => i.id === id);
+      if(!iss) return;
+      let newTimeline = iss.timeline ? [...iss.timeline, {title: 'Funds Approved', date: new Date().toISOString(), type:'active'}] : [];
+      await updateDB(id, { budget: 'Funded', status: 'in progress', timeline: newTimeline });
+      await logAudit('FUNDS_ALLOCATED', `Approved budget for Issue ${id}.`);
+      showToast(`Funding approved!`, 'success', '💰'); await reRenderAllActive();
+  } finally {
+      hideLoader();
+  }
 }
 
 async function renderGov() {
