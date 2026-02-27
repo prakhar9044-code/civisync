@@ -1,5 +1,9 @@
 {
   "routes": [
+    { 
+      "src": "/supabase-api/(.*)", 
+      "dest": "https://nsyoivdrcydlfcvipzfy.supabase.co/$1" 
+    },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
